@@ -713,15 +713,16 @@ func draw_fx_layer() -> void:
 		fx_layer.draw_circle(pos, 5.5, Color(col.r, col.g, col.b, 0.95))
 		fx_layer.draw_arc(pos, 14.0 + 3.0 * pulse, 0.0, TAU, 24, Color(col.r, col.g, col.b, 0.85), 2.0, true)
 
-	# Weapon tracers
+	# Weapon tracers + muzzle flash & impact burst
 	for line_data in tracer_lines:
-		fx_layer.draw_line(
-			line_data["from"] as Vector2,
-			line_data["to"] as Vector2,
-			line_data["color"] as Color,
-			float(line_data["width"]),
-			true
-		)
+		var from_p: Vector2 = line_data["from"] as Vector2
+		var to_p: Vector2 = line_data["to"] as Vector2
+		var col: Color = line_data["color"] as Color
+		var ttl: float = float(line_data["ttl"])
+		fx_layer.draw_line(from_p, to_p, col, float(line_data["width"]), true)
+		var burst_r: float = clampf(ttl * 70.0, 4.0, 18.0)
+		fx_layer.draw_circle(from_p, burst_r * 0.65, Color(1.0, 0.96, 0.72, clampf(ttl * 5.0, 0.0, 0.9)))
+		fx_layer.draw_arc(to_p, burst_r, 0.0, TAU, 16, col, 2.0, true)
 
 	# Floating combat numbers
 	var font: Font = ThemeDB.fallback_font

@@ -2,38 +2,19 @@
 
 RPG de Ação e Survival Horror inspirado em **Parasite Eve**, construído em **Godot 4.3 + GDScript (tipagem estática)**.
 
-## Jogar / Testar no Celular (Build Automático)
-Cada push na branch `main` dispara o workflow [deploy-web.yml](.github/workflows/deploy-web.yml) que exporta a versão Web (HTML5, single-thread) para o GitHub Pages:
+## Jogar / Testar no Celular ou PC
+* **Versão Web (atualizada automaticamente a cada push):**
+  `https://edsephiroth.github.io/Bio-Crisis/`
+* **APK Android (sob demanda):**
+  No GitHub, acesse **Actions → Build Bio Crisis (Android APK) → Run workflow** e baixe o artefato `BioCrisis-Android-APK`.
 
-`https://edsephiroth.github.io/Bio-Crisis/`
-
-> **Nota de primeira ativação:** No GitHub, vá em **Settings → Pages → Source** e selecione **GitHub Actions** (caso ainda não esteja ativo).
+## O que está implementado (Prólogo — ONG Children First)
+* **3 Salas Conectadas**: *Salão de Gala* (Safe Room + Terminal de Save) → *Corredor Leste* (Keycard de Evacuação + Tool) → *Hall Principal* (Chefe **Mutante Alfa** em 2 fases com Onda de Choque Bioelétrica).
+* **Combate Tático ATB + Esfera de Alcance**: pausa tática, mira por toque/clique, 5 armas com munição por calibre (`9mm`, `12G`, `5.56mm`), *muzzle flash* e impacto visual.
+* **Energia Bio-Celular (PE)**: `HEAL 1`, `ENERGY SHOT` (perfurante), `HASTE`, `SCAN`, `SLOW`, `BARRIER` e `LIBERATE`.
+* **Bio-Crisis OS ModernMenu (6 abas)**: `INVENTORY` (com **Weapon Tune** via Tool), `MAP` (planta tática ao vivo), `BIO-ENERGY`, `STATUS / TUNE` (evolução biológica com BP), `EXTRAS` (Documentos + Bestiário) e `OPTIONS` (Áudio, CRT, Save/Load).
+* **Atmosfera Survival Horror**: iluminação 2D em GPU com sombras dinâmicas (`LightOccluder2D`), partículas atmosféricas, animação Idle e de caminhada da Elisabeth, `NavigationAgent2D` (*pathfinding* real) e 14 faixas de áudio (SFX + BGM ambiente).
 
 ## Controles
-* **Celular (Touch)**: Joystick virtual (canto inferior esquerdo), botão **TÁTICO** (canto inferior direito) quando a barra ATB estiver cheia, e toque direto nos inimigos dentro da esfera de alcance (ou botão **ATIRAR**).
-* **PC (Teclado/Mouse)**:
-  * `WASD` / `Setas`: Mover Elisabeth
-  * `Espaço`: Ativar/Cancelar Pausa Tática ATB (exibe a esfera de alcance)
-  * `Clique Esquerdo`: Selecionar alvo dentro da esfera
-  * `E`: Energy Shot (30 PE — feixe perfurante)
-  * `Q`: Heal (30 PE)
-  * `R`: Haste (25 PE — dobra velocidade da ATB)
-
-## Arquitetura do Projeto
-```text
-Bio-Crisis/
-├── assets/
-│   ├── sprites/      # Spritesheets otimizados (Elisabeth 8x4, Deformed Common 6x2)
-│   ├── tilesets/     # Tilesets 48x48 do Salão de Festas (ONG Children First)
-│   ├── icons/        # Ícones de armas, armaduras e suprimentos
-│   ├── lights/       # Texturas radiais para PointLight2D
-│   └── ui/           # Arte de título e retrato da Elisabeth
-├── shaders/          # Vinheta e scanlines PS1 (crt_vignette.gdshader)
-├── src/
-│   ├── autoload/     # EventBus (sinais globais) e GameState (ATB, PE, EXP, armas)
-│   ├── resources/    # Classes tipadas (WeaponData, PeSkillData, EnemyData)
-│   ├── entities/     # Elisabeth (player) e EnemyBase (Deformed Common)
-│   ├── levels/       # ChildrenFirstHall (Salão de Gala + Safe Room + Iluminação 2D)
-│   └── ui/           # TitleScreen, HUD estilo Parasite Eve e VirtualJoystick
-└── .github/workflows/deploy-web.yml
-```
+* **Celular (Touch)**: Joystick virtual (esquerda), botão **TÁTICO** (direita), **INTERAGIR** (ao chegar perto de portas/itens) e **MENU** (topo direito).
+* **PC**: `WASD`/Setas (mover), `Espaço` (Pausa Tática ATB), `F`/`Enter` (Interagir), `Clique` (atacar alvo), `E` (Energy Shot), `Q` (Heal), `R` (Haste).

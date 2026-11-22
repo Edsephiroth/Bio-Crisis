@@ -1,6 +1,9 @@
 class_name ElisabethPlayer
 extends CharacterBody2D
 
+const WALK_SHEET: Texture2D = preload("res://assets/sprites/elisabeth_sheet.png")
+const IDLE_SHEET: Texture2D = preload("res://assets/sprites/elisabeth_idle_sheet.png")
+
 @export var base_speed: float = 175.0
 
 @onready var sprite: Sprite2D = $Sprite2D
@@ -12,6 +15,8 @@ var facing_dir: Vector2 = Vector2.DOWN
 var dir_row: int = 0
 var anim_timer: float = 0.0
 var anim_frame: int = 0
+var idle_timer: float = 0.0
+var is_using_idle_sheet: bool = false
 
 var shake_intensity: float = 0.0
 var shake_timer: float = 0.0
@@ -66,6 +71,13 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	if input_vec.length() > 0.1:
+		if is_using_idle_sheet:
+			is_using_idle_sheet = false
+			sprite.texture = WALK_SHEET
+			sprite.hframes = 8
+			sprite.vframes = 4
+		sprite.scale = Vector2(0.76, 0.76)
+
 		facing_dir = input_vec.normalized()
 		if absf(facing_dir.x) > absf(facing_dir.y):
 			dir_row = 3 if facing_dir.x > 0.0 else 2
@@ -78,11 +90,27 @@ func _physics_process(delta: float) -> void:
 			anim_frame = (anim_frame + 1) % 8
 			if anim_frame == 2 or anim_frame == 6:
 				AudioManager.play_sfx("step", -11.0, 0.14)
+		sprite.frame = dir_row * 8 + anim_frame
 	else:
-		anim_frame = 0
-		anim_timer = 0.0
+		idle_timer += delta * 4.5
+		if dir_row == 0:
+			if not is_using_idle_sheet:
+				is_using_idle_sheet = true
+				sprite.texture = IDLE_SHEET
+				sprite.hframes = 8
+				sprite.vframes = 1
+			sprite.frame = int(idle_timer) % 8
+			sprite.scale = Vector2(0.76, 0.76)
+		else:
+			if is_using_idle_sheet:
+				is_using_idle_sheet = false
+				sprite.texture = WALK_SHEET
+				sprite.hframes = 8
+				sprite.vframes = 4
+			sprite.frame = dir_row * 8
+			var breath: float = 1.0 + 0.015 * sin(idle_timer * 1.4)
+			sprite.scale = Vector2(0.76, 0.76 * breath)
 
-	sprite.frame = dir_row * 8 + anim_frame
 	# Shift flashlight slightly ahead of Elisabeth
 	flashlight.position = Vector2(0, -18) + facing_dir * 34.0
 
