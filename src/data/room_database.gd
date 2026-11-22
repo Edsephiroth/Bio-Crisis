@@ -58,6 +58,13 @@ static func _gala_hall_room() -> Dictionary:
 		],
 		"pickups": [
 			{
+				"id": "gala_char_switcher",
+				"tile": Vector2(8.0, 13.5),
+				"kind": "char_switcher",
+				"label": "Trocar Personagem (Teste)",
+				"color": Color(1.0, 0.85, 0.25),
+			},
+			{
 				"id": "gala_save_terminal",
 				"tile": Vector2(2.2, 13.5),
 				"kind": "save_terminal",

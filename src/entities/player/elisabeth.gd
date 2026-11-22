@@ -1,9 +1,6 @@
 class_name ElisabethPlayer
 extends CharacterBody2D
 
-const WALK_SHEET: Texture2D = preload("res://assets/sprites/elisabeth_sheet.png")
-const RUN_SHEET: Texture2D = preload("res://assets/sprites/elisabeth_run_sheet.png")
-
 @export var walk_speed: float = 155.0
 @export var run_speed: float = 225.0
 @export var dash_speed: float = 440.0
@@ -12,8 +9,11 @@ const RUN_SHEET: Texture2D = preload("res://assets/sprites/elisabeth_run_sheet.p
 @onready var flashlight: PointLight2D = $Flashlight
 @onready var camera: Camera2D = $Camera2D
 
-# 8-direction rows in WALK_SHEET: 0=D, 1=U, 2=L, 3=R, 4=DL, 5=DR, 6=UL, 7=UR
-# 4-direction rows in RUN_SHEET:  0=D, 1=U, 2=L, 3=R
+var walk_tex: Texture2D = null
+var run_tex: Texture2D = null
+var char_scale: float = 0.76
+
+# 8-direction rows: 0=D, 1=U, 2=L, 3=R, 4=DL, 5=DR, 6=UL, 7=UR
 var facing_dir: Vector2 = Vector2.DOWN
 var dir8: int = 0
 var anim_timer: float = 0.0
@@ -35,9 +35,21 @@ var sphere_pulse: float = 0.0
 
 func _ready() -> void:
 	add_to_group("player")
+	apply_active_character()
 	EventBus.screen_shake_requested.connect(_on_screen_shake)
 	EventBus.tactical_mode_changed.connect(_on_tactical_changed)
 	EventBus.player_stats_changed.connect(queue_redraw)
+
+
+func apply_active_character() -> void:
+	var ch: Dictionary = GameState.get_active_character()
+	walk_tex = load(str(ch["walk"])) as Texture2D
+	run_tex = load(str(ch["run"])) as Texture2D
+	char_scale = float(ch.get("scale", 0.76))
+	sprite.texture = run_tex if active_sheet_mode == "run" else walk_tex
+	sprite.hframes = 8
+	sprite.vframes = 8
+	sprite.scale = Vector2(char_scale, char_scale)
 
 
 func is_invulnerable() -> bool:
@@ -134,7 +146,7 @@ func _set_sheet_mode(mode: String) -> void:
 	if active_sheet_mode == mode:
 		return
 	active_sheet_mode = mode
-	sprite.texture = RUN_SHEET if mode == "run" else WALK_SHEET
+	sprite.texture = run_tex if mode == "run" else walk_tex
 	sprite.hframes = 8
 	sprite.vframes = 8
 
@@ -168,7 +180,7 @@ func _physics_process(delta: float) -> void:
 		velocity = dash_dir * dash_speed
 		move_and_slide()
 		_set_sheet_mode("run")
-		sprite.scale = Vector2(0.76, 0.76)
+		sprite.scale = Vector2(char_scale, char_scale)
 		sprite.position = Vector2(0, -34)
 		anim_timer += delta * 24.0
 		if anim_timer >= 1.0:
@@ -203,7 +215,7 @@ func _physics_process(delta: float) -> void:
 		facing_dir = input_vec.normalized()
 		dir8 = _vec_to_dir8(facing_dir)
 		_set_sheet_mode("run" if is_running else "walk")
-		sprite.scale = Vector2(0.76, 0.76)
+		sprite.scale = Vector2(char_scale, char_scale)
 		sprite.position = Vector2(0, -34)
 
 		var fps: float = (14.5 if is_running else 9.5) * (1.25 if GameState.haste_timer > 0.0 else 1.0)
@@ -222,7 +234,7 @@ func _physics_process(delta: float) -> void:
 		var wave: float = sin(idle_timer)
 		var breath_y: float = 1.0 + 0.018 * wave
 		var breath_x: float = 1.0 - 0.008 * wave
-		sprite.scale = Vector2(0.76 * breath_x, 0.76 * breath_y)
+		sprite.scale = Vector2(char_scale * breath_x, char_scale * breath_y)
 		sprite.position = Vector2(0, -34.0 - 0.6 * wave)
 
 	flashlight.position = Vector2(0, -18) + facing_dir * 34.0

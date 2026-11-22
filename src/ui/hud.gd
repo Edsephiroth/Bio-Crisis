@@ -104,7 +104,8 @@ func _refresh_hud() -> void:
 	atb_bar.value = GameState.atb
 	atb_label.text = "ATB READY!" if GameState.is_atb_ready() else "ATB %d%%" % int(GameState.atb)
 
-	level_label.text = "ELISABETH  LV.%d  |  BP %d" % [GameState.level, GameState.bp]
+	var ch_name: String = str(GameState.get_active_character().get("short_name", "ELISABETH"))
+	level_label.text = "%s  LV.%d  |  BP %d" % [ch_name, GameState.level, GameState.bp]
 
 	var badges: PackedStringArray = PackedStringArray()
 	if GameState.in_safe_room:

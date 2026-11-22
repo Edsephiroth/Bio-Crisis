@@ -65,6 +65,55 @@ var bestiary_kills: Dictionary = {}
 ## Hidden organic weapon familiarity (0.0 = inexperienced -> 1.0 = steady handling). Never shown as a bar/number.
 var weapon_familiarity: Dictionary = {}
 
+const PLAYABLE_CHARACTERS: Array[Dictionary] = [
+	{
+		"id": "elisabeth",
+		"name": "Elisabeth Shelley",
+		"short_name": "ELISABETH",
+		"role": "ENGLISH TEACHER",
+		"walk": "res://assets/sprites/elisabeth_sheet.png",
+		"run": "res://assets/sprites/elisabeth_run_sheet.png",
+		"scale": 0.76,
+	},
+	{
+		"id": "agatha",
+		"name": "Agatha",
+		"short_name": "AGATHA",
+		"role": "SURVIVOR",
+		"walk": "res://assets/sprites/agatha_walk_sheet.png",
+		"run": "res://assets/sprites/agatha_run_sheet.png",
+		"scale": 0.76,
+	},
+	{
+		"id": "felix",
+		"name": "Felix",
+		"short_name": "FELIX",
+		"role": "SURVIVOR",
+		"walk": "res://assets/sprites/felix_walk_sheet.png",
+		"run": "res://assets/sprites/felix_run_sheet.png",
+		"scale": 0.82,
+	},
+	{
+		"id": "lucia",
+		"name": "Lucia",
+		"short_name": "LUCIA",
+		"role": "SURVIVOR",
+		"walk": "res://assets/sprites/lucia_walk_sheet.png",
+		"run": "res://assets/sprites/lucia_walk_sheet.png",
+		"scale": 0.76,
+	},
+	{
+		"id": "emilly",
+		"name": "Emilly",
+		"short_name": "EMILLY",
+		"role": "SURVIVOR",
+		"walk": "res://assets/sprites/emilly_walk_sheet.png",
+		"run": "res://assets/sprites/emilly_walk_sheet.png",
+		"scale": 0.76,
+	},
+]
+var active_character_index: int = 0
+
 const PE_EXP_CHART: Dictionary = {
 	1: 3, 2: 8, 3: 19, 4: 28, 5: 45, 6: 70, 7: 105, 8: 150, 9: 210, 10: 290,
 	11: 390, 12: 520, 13: 680, 14: 870, 15: 1100
@@ -200,6 +249,17 @@ func record_weapon_fire(weapon: WeaponData) -> void:
 	# Heavy weapons take longer to master organically (~14 shots for shotgun, ~10 for rifle/smg/pistol)
 	var step: float = 0.07 if key == "shotgun" else 0.10
 	weapon_familiarity[key] = clampf(cur + step, 0.0, 1.0)
+
+
+func get_active_character() -> Dictionary:
+	return PLAYABLE_CHARACTERS[active_character_index % PLAYABLE_CHARACTERS.size()]
+
+
+func cycle_playable_character() -> Dictionary:
+	active_character_index = (active_character_index + 1) % PLAYABLE_CHARACTERS.size()
+	var ch: Dictionary = get_active_character()
+	EventBus.player_stats_changed.emit()
+	return ch
 
 
 func get_current_ammo() -> int:

@@ -361,7 +361,15 @@ func trigger_interact() -> void:
 	if itype == "pickup":
 		var pid: String = str(data["id"])
 		var kind: String = str(data.get("kind", "supply"))
-		if kind == "save_terminal":
+		if kind == "char_switcher":
+			var ch: Dictionary = GameState.cycle_playable_character()
+			player.apply_active_character()
+			AudioManager.play_sfx("atb_ready", -2.5, 0.04)
+			var cname: String = str(ch["name"])
+			EventBus.floating_text_requested.emit("PERSONAGEM: %s" % cname.to_upper(), player.global_position + Vector2(0, -58), Color(1.0, 0.88, 0.28))
+			EventBus.toast_message.emit("Testando personagem: %s (interaja novamente para trocar)" % cname, Color(1.0, 0.88, 0.3))
+			return
+		elif kind == "save_terminal":
 			GameState.save_game(player.global_position)
 			EventBus.floating_text_requested.emit("JOGO SALVO!", player.global_position + Vector2(0, -56), Color(0.35, 1.0, 0.8))
 			return
@@ -959,6 +967,7 @@ func draw_fx_layer() -> void:
 		fx_layer.draw_arc(pos, 18.0 + 4.0 * pulse, 0.0, TAU, 28, col, 2.5, true)
 
 	# Glowing pickup items on floor
+	var fx_font: Font = ThemeDB.fallback_font
 	for p in active_pickups:
 		var pd: Dictionary = p as Dictionary
 		var pos: Vector2 = (pd["tile"] as Vector2) * float(TILE_SIZE)
@@ -966,6 +975,8 @@ func draw_fx_layer() -> void:
 		fx_layer.draw_circle(pos, 10.0, Color(col.r, col.g, col.b, 0.35 * pulse))
 		fx_layer.draw_circle(pos, 5.5, Color(col.r, col.g, col.b, 0.95))
 		fx_layer.draw_arc(pos, 14.0 + 3.0 * pulse, 0.0, TAU, 24, Color(col.r, col.g, col.b, 0.85), 2.0, true)
+		if str(pd.get("kind", "")) == "char_switcher":
+			fx_layer.draw_string(fx_font, pos + Vector2(-58, -22), "TROCAR PERSONAGEM", HORIZONTAL_ALIGNMENT_CENTER, 116, 11, Color(1.0, 0.9, 0.35, 0.95))
 
 	# Weapon tracers + muzzle flash & impact burst
 	for line_data in tracer_lines:
