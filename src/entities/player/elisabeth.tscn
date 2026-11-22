@@ -27,9 +27,12 @@ shape = SubResource("CircleShape2D_body")
 [node name="Flashlight" type="PointLight2D" parent="."]
 position = Vector2(0, 12)
 color = Color(0.86, 0.93, 1, 1)
-energy = 1.35
+energy = 1.45
+shadow_enabled = true
+shadow_filter = 1
+shadow_filter_smooth = 2.0
 texture = ExtResource("3_light")
-texture_scale = 2.6
+texture_scale = 2.8
 
 [node name="Camera2D" type="Camera2D" parent="."]
 zoom = Vector2(1.15, 1.15)

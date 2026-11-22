@@ -22,13 +22,20 @@ color = Color(0.32, 0.36, 0.46, 1)
 collision_layer = 1
 collision_mask = 0
 
+[node name="NavigationRegion2D" type="NavigationRegion2D" parent="."]
+
+[node name="Occluders" type="Node2D" parent="."]
+
 [node name="Lights" type="Node2D" parent="."]
 
 [node name="EmergencyLight" type="PointLight2D" parent="Lights"]
 color = Color(1, 0.25, 0.25, 1)
 energy = 1.0
+shadow_enabled = true
+shadow_filter = 1
+shadow_filter_smooth = 2.0
 texture = ExtResource("4_light")
-texture_scale = 3.6
+texture_scale = 3.8
 
 [node name="SafeRoomLight" type="PointLight2D" parent="Lights"]
 color = Color(0.28, 1, 0.6, 1)

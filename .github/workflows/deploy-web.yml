@@ -24,20 +24,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Godot 4.3
-        uses: chickensoft-games/setup-godot@v2
-        with:
-          version: 4.3.0
-          use-dotnet: false
-          include-templates: true
+      - name: Install Godot 4.3 & Official Export Templates
+        run: |
+          set -e
+          mkdir -p /tmp/godot_dl ~/.local/share/godot/export_templates/4.3.stable
+          curl -sL https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip -o /tmp/godot_dl/godot.zip
+          unzip -qo /tmp/godot_dl/godot.zip -d /tmp/godot_dl
+          chmod +x /tmp/godot_dl/Godot_v4.3-stable_linux.x86_64
+          sudo mv /tmp/godot_dl/Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
 
-      - name: Create build directory
-        run: mkdir -p build/web
+          curl -sL https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz -o /tmp/godot_dl/templates.tpz
+          unzip -qo /tmp/godot_dl/templates.tpz -d /tmp/godot_dl/tpl
+          mv /tmp/godot_dl/tpl/templates/* ~/.local/share/godot/export_templates/4.3.stable/
+          ls -lh ~/.local/share/godot/export_templates/4.3.stable/web_nothreads*
 
       - name: Import resources & Export Web build
         run: |
+          mkdir -p build/web
           godot --headless --import --quit || true
           godot --headless --verbose --export-release "Web" build/web/index.html
+          ls -lh build/web
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

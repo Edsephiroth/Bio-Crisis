@@ -13,10 +13,12 @@ enum AIState { IDLE, CHASE, WINDUP, COOLDOWN }
 @export var bp_reward: int = 18
 
 @onready var sprite: Sprite2D = $Sprite2D
+@onready var nav_agent: NavigationAgent2D = $NavigationAgent2D
 
 var hp: int = 95
 var state: AIState = AIState.IDLE
 var state_timer: float = 0.0
+var nav_repath_timer: float = 0.0
 var anim_timer: float = 0.0
 var anim_frame: int = 0
 var dir_row: int = 0 # 0 = D, 1 = U
@@ -85,7 +87,17 @@ func _physics_process(delta: float) -> void:
 				state = AIState.IDLE
 				velocity = Vector2.ZERO
 			else:
-				var dir: Vector2 = to_player.normalized()
+				nav_repath_timer -= delta
+				if nav_repath_timer <= 0.0:
+					nav_repath_timer = 0.16
+					nav_agent.target_position = player.global_position
+
+				var next_pos: Vector2 = nav_agent.get_next_path_position()
+				var dir: Vector2 = (next_pos - global_position)
+				if dir.length_squared() < 4.0:
+					dir = to_player
+				dir = dir.normalized()
+
 				velocity = dir * move_speed
 				move_and_slide()
 				dir_row = 1 if dir.y < -0.2 else 0
@@ -116,6 +128,7 @@ func _physics_process(delta: float) -> void:
 func take_damage(amount: int, is_crit: bool = false) -> void:
 	hp = maxi(0, hp - amount)
 	hit_flash_timer = 0.16
+	AudioManager.play_sfx("hit_enemy", -3.0, 0.09)
 	var col: Color = Color(1.0, 0.9, 0.25) if is_crit else Color(1.0, 0.95, 0.95)
 	var label: String = "%d CRIT!" % amount if is_crit else "%d" % amount
 	EventBus.floating_text_requested.emit(label, global_position + Vector2(0, -52), col)

@@ -154,7 +154,10 @@ func tick_realtime(delta: float) -> void:
 
 	var atb_mult: float = 2.0 if haste_timer > 0.0 else 1.0
 	if atb < 100.0:
+		var was_ready: bool = atb >= 99.9
 		atb = minf(100.0, atb + atb_rate * atb_mult * delta)
+		if not was_ready and atb >= 99.9:
+			AudioManager.play_sfx("atb_ready", -5.0, 0.02)
 		changed = true
 
 	var pe_regen: float = 12.0 if in_safe_room else 2.2
@@ -188,6 +191,7 @@ func apply_damage(amount: int, world_pos: Vector2) -> void:
 		final_dmg = int(round(float(amount) * 0.75))
 
 	hp = maxi(0, hp - final_dmg)
+	AudioManager.play_sfx("player_hurt", -2.0, 0.05)
 	EventBus.floating_text_requested.emit("-%d" % final_dmg, world_pos + Vector2(0, -40), Color(1.0, 0.28, 0.32))
 	EventBus.screen_shake_requested.emit(7.0, 0.22)
 	EventBus.player_stats_changed.emit()
@@ -219,6 +223,7 @@ func award_exp_and_bp(exp_gain: int, bp_gain: int, world_pos: Vector2) -> void:
 		max_pe += 15.0
 		pe = max_pe
 		base_attack += 4
+		AudioManager.play_sfx("level_up", -1.5, 0.0)
 		EventBus.floating_text_requested.emit("LEVEL UP! LV.%d" % level, world_pos + Vector2(0, -64), Color(1.0, 0.88, 0.3))
 		EventBus.toast_message.emit("Nível %d alcançado! HP e PE restaurados." % level, Color(1.0, 0.85, 0.3))
 	EventBus.player_stats_changed.emit()

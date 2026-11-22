@@ -38,6 +38,8 @@ const LAYOUT: Array[String] = [
 @onready var emergency_light: PointLight2D = $Lights/EmergencyLight
 @onready var safe_light: PointLight2D = $Lights/SafeRoomLight
 @onready var walls_body: StaticBody2D = $WallsBody
+@onready var nav_region: NavigationRegion2D = $NavigationRegion2D
+@onready var occluders_root: Node2D = $Occluders
 
 var safe_room_rect: Rect2 = Rect2(1 * TILE_SIZE, 12 * TILE_SIZE, 3 * TILE_SIZE, 3 * TILE_SIZE)
 var tracer_lines: Array[Dictionary] = []
@@ -48,6 +50,8 @@ var emergency_time: float = 0.0
 func _ready() -> void:
 	GameState.reset_run()
 	_build_map_collisions_and_spawns()
+	_bake_navigation_mesh()
+	AudioManager.start_ambient_bgm()
 	EventBus.enemy_defeated.connect(_on_enemy_defeated)
 	EventBus.floating_text_requested.connect(_on_floating_text)
 	EventBus.weapon_fired.connect(_on_weapon_fired)
@@ -68,6 +72,10 @@ func _build_map_collisions_and_spawns() -> void:
 				col_shape.shape = rect
 				col_shape.position = center
 				walls_body.add_child(col_shape)
+
+				# Add dynamic 2D shadow occluders on interior walls/pillars
+				if x > 0 and x < MAP_COLS - 1 and y > 0 and y < MAP_ROWS - 1:
+					_add_wall_occluder(x, y)
 			elif ch == "P":
 				player.global_position = center
 			elif ch == "E":
@@ -79,6 +87,58 @@ func _build_map_collisions_and_spawns() -> void:
 
 	safe_light.position = safe_room_rect.get_center()
 	emergency_light.position = Vector2(11 * TILE_SIZE, 7.5 * TILE_SIZE)
+
+
+func _add_wall_occluder(tx: int, ty: int) -> void:
+	var occ := LightOccluder2D.new()
+	var poly := OccluderPolygon2D.new()
+	var x0: float = float(tx * TILE_SIZE) + 2.0
+	var y0: float = float(ty * TILE_SIZE) + 2.0
+	var x1: float = float((tx + 1) * TILE_SIZE) - 2.0
+	var y1: float = float((ty + 1) * TILE_SIZE) - 2.0
+	poly.polygon = PackedVector2Array([
+		Vector2(x0, y0),
+		Vector2(x1, y0),
+		Vector2(x1, y1),
+		Vector2(x0, y1),
+	])
+	occ.occluder = poly
+	occluders_root.add_child(occ)
+
+
+func _bake_navigation_mesh() -> void:
+	var nav_poly := NavigationPolygon.new()
+	nav_poly.agent_radius = 16.0
+	var source_data := NavigationMeshSourceGeometryData2D.new()
+
+	# Full interior traversable outline
+	var w: float = float(MAP_COLS * TILE_SIZE)
+	var h: float = float(MAP_ROWS * TILE_SIZE)
+	source_data.add_traversable_outline(PackedVector2Array([
+		Vector2(TILE_SIZE, TILE_SIZE),
+		Vector2(w - TILE_SIZE, TILE_SIZE),
+		Vector2(w - TILE_SIZE, h - TILE_SIZE),
+		Vector2(TILE_SIZE, h - TILE_SIZE),
+	]))
+
+	# Carve out wall tiles as navigation obstructions
+	for y in range(1, MAP_ROWS - 1):
+		var row: String = LAYOUT[y]
+		for x in range(1, MAP_COLS - 1):
+			if row[x] == "#":
+				var x0: float = float(x * TILE_SIZE)
+				var y0: float = float(y * TILE_SIZE)
+				var x1: float = float((x + 1) * TILE_SIZE)
+				var y1: float = float((y + 1) * TILE_SIZE)
+				source_data.add_obstruction_outline(PackedVector2Array([
+					Vector2(x0, y0),
+					Vector2(x1, y0),
+					Vector2(x1, y1),
+					Vector2(x0, y1),
+				]))
+
+	NavigationServer2D.bake_from_source_geometry_data(nav_poly, source_data)
+	nav_region.navigation_polygon = nav_poly
 
 
 func _spawn_enemy(pos: Vector2, is_alpha: bool, idx: int) -> void:
@@ -275,6 +335,7 @@ func cast_heal() -> void:
 		EventBus.toast_message.emit("PE insuficiente para HEAL (30 PE).", Color(1.0, 0.5, 0.5))
 		return
 	GameState.pe -= 30.0
+	AudioManager.play_sfx("heal", -2.5, 0.02)
 	var heal_amt: int = 85 + GameState.level * 15
 	GameState.heal_player(heal_amt, player.global_position)
 	GameState.set_tactical_pause(false)
@@ -285,6 +346,7 @@ func cast_haste() -> void:
 		EventBus.toast_message.emit("PE insuficiente para HASTE (25 PE).", Color(1.0, 0.5, 0.5))
 		return
 	GameState.pe -= 25.0
+	AudioManager.play_sfx("haste", -2.5, 0.02)
 	GameState.haste_timer = 18.0
 	EventBus.floating_text_requested.emit("HASTE!", player.global_position + Vector2(0, -54), Color(0.4, 0.95, 1.0))
 	EventBus.toast_message.emit("HASTE ativo: ATB e velocidade aumentados!", Color(0.4, 0.95, 1.0))
@@ -292,6 +354,7 @@ func cast_haste() -> void:
 
 
 func _on_weapon_fired(from_pos: Vector2, to_pos: Vector2, is_energy_shot: bool) -> void:
+	AudioManager.play_weapon_sfx(GameState.get_equipped_weapon().id, is_energy_shot)
 	tracer_lines.append({
 		"from": from_pos,
 		"to": to_pos,

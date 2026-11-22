@@ -21,6 +21,7 @@ config/icon="res://assets/ui/elisabeth_portrait.png"
 
 EventBus="*res://src/autoload/event_bus.gd"
 GameState="*res://src/autoload/game_state.gd"
+AudioManager="*res://src/autoload/audio_manager.gd"
 
 [display]
 

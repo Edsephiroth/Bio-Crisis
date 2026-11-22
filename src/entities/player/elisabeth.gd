@@ -76,6 +76,8 @@ func _physics_process(delta: float) -> void:
 		if anim_timer >= 1.0:
 			anim_timer -= 1.0
 			anim_frame = (anim_frame + 1) % 8
+			if anim_frame == 2 or anim_frame == 6:
+				AudioManager.play_sfx("step", -11.0, 0.14)
 	else:
 		anim_frame = 0
 		anim_timer = 0.0

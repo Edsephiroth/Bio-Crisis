@@ -22,6 +22,7 @@ extends CanvasLayer
 @onready var btn_haste: Button = %BtnHaste
 @onready var btn_cancel: Button = %BtnCancel
 @onready var btn_switch_weapon: Button = %BtnSwitchWeapon
+@onready var btn_mute: Button = %BtnMute
 
 @onready var end_overlay: ColorRect = %EndOverlay
 @onready var end_title: Label = %EndTitle
@@ -46,6 +47,7 @@ func _ready() -> void:
 	btn_haste.pressed.connect(_on_btn_haste_pressed)
 	btn_cancel.pressed.connect(_on_btn_cancel_pressed)
 	btn_switch_weapon.pressed.connect(func() -> void: GameState.cycle_weapon())
+	btn_mute.pressed.connect(_on_btn_mute_pressed)
 	btn_restart.pressed.connect(_on_restart_pressed)
 
 	tactical_panel.visible = false
@@ -168,6 +170,11 @@ func _on_victory() -> void:
 	end_title.text = "SALÃO DE GALA LIMPO!"
 	end_title.modulate = Color(0.35, 1.0, 0.65)
 	end_subtitle.text = "Vertical Slice concluído — LV.%d | %d BP acumulados." % [GameState.level, GameState.bp]
+
+
+func _on_btn_mute_pressed() -> void:
+	var muted: bool = AudioManager.toggle_mute()
+	btn_mute.text = "Som: OFF" if muted else "Som: ON"
 
 
 func _on_restart_pressed() -> void:
