@@ -7,29 +7,29 @@ static func create_starter_weapons() -> Array[WeaponData]:
 	var list: Array[WeaponData] = []
 
 	list.append(_make_weapon(
-		"m93r", "M93R", "9mm", 18, 230.0, 3, 18, PackedStringArray(["quickdraw"]),
+		"m93r", "M93R", "9mm", 18, 230.0, 3, 18, "burst", 0.095, PackedStringArray(["quickdraw"]),
 		"res://assets/icons/Pe1_icon_inv_pistol.png",
-		"Pistola italiana 9mm com rajada de 3 tiros. Perk: Quickdraw."
+		"Pistola italiana 9mm com rajada de 3 tiros rápidos. Perk: Quickdraw."
 	))
 	list.append(_make_weapon(
-		"glock19", "Glock 19", "9mm", 14, 215.0, 2, 16, PackedStringArray(["frost", "critup"]),
+		"glock19", "Glock 19", "9mm", 14, 215.0, 2, 16, "semi", 0.13, PackedStringArray(["frost", "critup"]),
 		"res://assets/icons/Pe1_icon_inv_pistol.png",
-		"Pistola leve com munição criogênica. Perks: Frost + Crit Up (ótima para Tune!)."
+		"Pistola leve semiautomática (2 tiros). Perks: Frost + Crit Up."
 	))
 	list.append(_make_weapon(
-		"m870", "M870 Shotgun", "12G", 36, 165.0, 1, 6, PackedStringArray(["heat"]),
+		"m870", "M870 Shotgun", "12G", 36, 165.0, 1, 6, "spread", 0.0, PackedStringArray(["heat"]),
 		"res://assets/icons/Pe1_icon_inv_shotgun.png",
-		"Escopeta tática 12G com cartuchos térmicos. Perk: Heat (+25% dano)."
+		"Escopeta 12G em cone (5 estilhaços simultâneos). Perk: Heat."
 	))
 	list.append(_make_weapon(
-		"mp5a5", "MP5A5 SMG", "9mm", 22, 225.0, 4, 28, PackedStringArray(["acid"]),
+		"mp5a5", "MP5A5 SMG", "9mm", 22, 225.0, 5, 30, "auto", 0.065, PackedStringArray(["acid"]),
 		"res://assets/icons/Pe1_icon_inv_smg.png",
-		"Submetralhadora de alta cadência. Perk: Acid (corrosão contínua)."
+		"Submetralhadora automática (rajada de 5 tiros em sequência). Perk: Acid."
 	))
 	list.append(_make_weapon(
-		"m4a1", "M4A1 Rifle", "5.56mm", 28, 300.0, 2, 24, PackedStringArray(["2comm"]),
+		"m4a1", "M4A1 Rifle", "5.56mm", 28, 300.0, 2, 24, "precision", 0.14, PackedStringArray(["2comm"]),
 		"res://assets/icons/Pe1_icon_inv_rifle.png",
-		"Carabina tática de longo alcance. Perk: 2x Command (recupera 45% ATB!)."
+		"Carabina tática de longo alcance (2 tiros precisos). Perk: 2x Command."
 	))
 	return list
 
@@ -123,7 +123,7 @@ static func get_bestiary_entries() -> Array[Dictionary]:
 
 
 static func _make_weapon(
-	id: String, dname: String, cal: String, atk: int, rng: float, rof: int, cap: int, perks: PackedStringArray, icon: String, desc: String
+	id: String, dname: String, cal: String, atk: int, rng: float, rof: int, cap: int, pattern: String, interval: float, perks: PackedStringArray, icon: String, desc: String
 ) -> WeaponData:
 	var w := WeaponData.new()
 	w.id = id
@@ -134,6 +134,8 @@ static func _make_weapon(
 	w.rate_of_fire = rof
 	w.capacity = cap
 	w.mag_current = cap
+	w.fire_pattern = pattern
+	w.shot_interval = interval
 	w.perks = perks
 	w.icon_path = icon
 	w.description = desc

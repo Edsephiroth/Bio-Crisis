@@ -3,7 +3,6 @@ extends CharacterBody2D
 
 const WALK_SHEET: Texture2D = preload("res://assets/sprites/elisabeth_sheet.png")
 const RUN_SHEET: Texture2D = preload("res://assets/sprites/elisabeth_run_sheet.png")
-const IDLE_SHEET: Texture2D = preload("res://assets/sprites/elisabeth_idle_sheet.png")
 
 @export var walk_speed: float = 165.0
 @export var run_speed: float = 218.0
@@ -19,7 +18,7 @@ var dir_row: int = 0
 var anim_timer: float = 0.0
 var anim_frame: int = 0
 var idle_timer: float = 0.0
-var active_sheet_mode: String = "walk" # "walk", "run", "idle"
+var active_sheet_mode: String = "walk" # "walk", "run"
 
 var dash_timer: float = 0.0
 var dash_dir: Vector2 = Vector2.DOWN
@@ -98,19 +97,14 @@ func _set_sheet_mode(mode: String) -> void:
 	if active_sheet_mode == mode:
 		return
 	active_sheet_mode = mode
-	match mode:
-		"run":
-			sprite.texture = RUN_SHEET
-			sprite.hframes = 8
-			sprite.vframes = 4
-		"idle":
-			sprite.texture = IDLE_SHEET
-			sprite.hframes = 8
-			sprite.vframes = 1
-		_:
-			sprite.texture = WALK_SHEET
-			sprite.hframes = 8
-			sprite.vframes = 4
+	if mode == "run":
+		sprite.texture = RUN_SHEET
+		sprite.hframes = 8
+		sprite.vframes = 4
+	else:
+		sprite.texture = WALK_SHEET
+		sprite.hframes = 8
+		sprite.vframes = 4
 
 
 func _physics_process(delta: float) -> void:
@@ -159,6 +153,7 @@ func _physics_process(delta: float) -> void:
 	if raw_len > 0.1:
 		_set_sheet_mode("run" if is_running else "walk")
 		sprite.scale = Vector2(0.76, 0.76)
+		sprite.position = Vector2(0, -34)
 
 		facing_dir = input_vec.normalized()
 		if absf(facing_dir.x) > absf(facing_dir.y):
@@ -175,16 +170,14 @@ func _physics_process(delta: float) -> void:
 				AudioManager.play_sfx("step", -11.0, 0.14)
 		sprite.frame = dir_row * 8 + anim_frame
 	else:
-		idle_timer += delta * 4.5
-		if dir_row == 0:
-			_set_sheet_mode("idle")
-			sprite.frame = int(idle_timer) % 8
-			sprite.scale = Vector2(0.76, 0.76)
-		else:
-			_set_sheet_mode("walk")
-			sprite.frame = dir_row * 8
-			var breath: float = 1.0 + 0.015 * sin(idle_timer * 1.4)
-			sprite.scale = Vector2(0.76, 0.76 * breath)
+		idle_timer += delta * 3.2
+		_set_sheet_mode("walk")
+		sprite.frame = dir_row * 8
+		var wave: float = sin(idle_timer)
+		var breath_y: float = 1.0 + 0.018 * wave
+		var breath_x: float = 1.0 - 0.008 * wave
+		sprite.scale = Vector2(0.76 * breath_x, 0.76 * breath_y)
+		sprite.position = Vector2(0, -34.0 - 0.6 * wave)
 
 	flashlight.position = Vector2(0, -18) + facing_dir * 34.0
 

@@ -34,6 +34,7 @@ var nearby_interactable: Dictionary = {}
 var tracer_lines: Array[Dictionary] = []
 var floating_texts: Array[Dictionary] = []
 var enemy_projectiles: Array[Dictionary] = []
+var pending_burst_shots: Array[Dictionary] = []
 var emergency_time: float = 0.0
 var pending_victory_after_dialogue: bool = false
 
@@ -297,6 +298,15 @@ func _process(delta: float) -> void:
 					EventBus.floating_text_requested.emit("ESQUIVOU!", player.global_position + Vector2(0, -52), Color(0.35, 0.95, 1.0))
 				enemy_projectiles.remove_at(i)
 
+	# Process sequential weapon burst shots (SMG / M93R / Rifle / Pistol)
+	if not GameState.is_world_paused():
+		for i in range(pending_burst_shots.size() - 1, -1, -1):
+			var shot: Dictionary = pending_burst_shots[i]
+			shot["delay"] = float(shot["delay"]) - delta
+			if float(shot["delay"]) <= 0.0:
+				_execute_single_queued_bullet(shot)
+				pending_burst_shots.remove_at(i)
+
 	if redraw_fx:
 		fx_layer.queue_redraw()
 
@@ -547,7 +557,6 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 				GameState.set_tactical_pause(false)
 			return
 		var shots: int = GameState.consume_mag_ammo(weapon.rate_of_fire)
-		# Darkness status can cause miss
 		if GameState.darkness_timer > 0.0 and randf() < 0.35:
 			EventBus.weapon_fired.emit(player.global_position + Vector2(0, -24), target.global_position + Vector2(24, -40), false)
 			EventBus.floating_text_requested.emit("ERROU (DARKNESS)!", target.global_position + Vector2(0, -56), Color(0.65, 0.55, 0.9))
@@ -558,29 +567,121 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 		var crit_chance: float = 0.45 if GameState.level >= 5 else 0.15
 		if weapon.perks.has("critup"):
 			crit_chance += 0.22
-		var is_crit: bool = in_range and (randf() < crit_chance)
-		var per_shot: float = float(GameState.get_total_attack()) * (0.72 if shots > 1 else 1.25)
-		if weapon.perks.has("heat"):
-			per_shot *= 1.25
-		var total_dmg: int = int(round(per_shot * float(shots) * (1.5 if is_crit else 1.0) * falloff_mult))
+		if weapon.fire_pattern == "precision":
+			crit_chance += 0.12
 
-		EventBus.weapon_fired.emit(player.global_position + Vector2(0, -24), target.global_position + Vector2(0, -24), false)
-		EventBus.screen_shake_requested.emit(4.0, 0.14)
+		# Compute total expected burst damage and divide across individual shots/pellets
+		var base_total: float = float(GameState.get_total_attack()) * 1.45 * falloff_mult
+		if weapon.perks.has("heat"):
+			base_total *= 1.25
 		if not in_range:
 			EventBus.floating_text_requested.emit("OUT OF RANGE", target.global_position + Vector2(0, -72), Color(1.0, 0.65, 0.25))
 		var hit_part: String = GameState.selected_boss_part if in_range else "body"
-		target.take_damage(total_dmg, is_crit, hit_part)
-		if is_instance_valid(target) and target.hp > 0:
-			target.apply_weapon_perks(weapon.perks)
+
+		if weapon.fire_pattern == "spread":
+			# SHOTGUN: 5 simultaneous pellets in a cone, hitting main target + nearby foes in cone!
+			var pellet_count: int = 5
+			var dmg_per_pellet: int = maxi(4, int(round(base_total / float(pellet_count))))
+			var base_dir: Vector2 = (target.global_position - player.global_position).normalized()
+			AudioManager.play_weapon_sfx(weapon.id, false)
+			EventBus.screen_shake_requested.emit(7.0, 0.22)
+			var angles: Array[float] = [-0.28, -0.14, 0.0, 0.14, 0.28]
+			var enemies_hit: Dictionary = {}
+			for ang in angles:
+				var pdir: Vector2 = base_dir.rotated(ang)
+				var end_p: Vector2 = player.global_position + pdir * (max_r + 18.0)
+				tracer_lines.append({
+					"from": player.global_position + Vector2(0, -24),
+					"to": end_p + Vector2(0, -24),
+					"color": Color(1.0, 0.65, 0.22, 1.0),
+					"width": 2.8,
+					"ttl": 0.18,
+				})
+				# Check enemies inside cone angle
+				for node in get_tree().get_nodes_in_group("enemies"):
+					var en: EnemyBase = node as EnemyBase
+					if en == null:
+						continue
+					var rel: Vector2 = en.global_position - player.global_position
+					if rel.length() <= max_r + 36.0 and absf(pdir.angle_to(rel.normalized())) <= 0.19:
+						enemies_hit[en] = int(enemies_hit.get(en, 0)) + 1
+			if enemies_hit.is_empty():
+				enemies_hit[target] = 3
+			for en_key in enemies_hit.keys():
+				var en: EnemyBase = en_key as EnemyBase
+				if is_instance_valid(en):
+					var pellets_landed: int = int(enemies_hit[en_key])
+					var is_c: bool = in_range and (randf() < crit_chance)
+					var total_en_dmg: int = int(round(float(dmg_per_pellet * pellets_landed) * (1.45 if is_c else 1.0)))
+					en.take_damage(total_en_dmg, is_c, hit_part)
+					if is_instance_valid(en) and en.hp > 0:
+						en.apply_weapon_perks(weapon.perks)
+			fx_layer.queue_redraw()
+		else:
+			# SEQUENTIAL SHOTS (SMG 5x auto / M93R 3x burst / Rifle 2x precision / Pistol 2x semi)
+			var num_bullets: int = maxi(1, shots)
+			var per_bullet_base: float = base_total / float(num_bullets)
+			var tracer_col: Color = Color(1.0, 0.92, 0.55, 1.0)
+			if weapon.perks.has("frost"):
+				tracer_col = Color(0.45, 0.9, 1.0, 1.0)
+			elif weapon.perks.has("acid"):
+				tracer_col = Color(0.6, 1.0, 0.35, 1.0)
+			elif weapon.fire_pattern == "precision":
+				tracer_col = Color(1.0, 0.98, 0.85, 1.0)
+
+			var interval: float = maxf(0.05, weapon.shot_interval)
+			for b_i in range(num_bullets):
+				var is_c: bool = in_range and (randf() < crit_chance)
+				var b_dmg: int = maxi(3, int(round(per_bullet_base * (1.45 if is_c else 1.0))))
+				var bullet_data: Dictionary = {
+					"delay": float(b_i) * interval,
+					"target": target,
+					"damage": b_dmg,
+					"is_crit": is_c,
+					"hit_part": hit_part,
+					"perks": weapon.perks,
+					"weapon_id": weapon.id,
+					"color": tracer_col,
+					"width": 2.2 if weapon.fire_pattern == "precision" else 2.5,
+					"jitter": 14.0 if weapon.fire_pattern == "auto" else (7.0 if weapon.fire_pattern == "burst" else 3.0),
+					"apply_perks": b_i == num_bullets - 1,
+				}
+				if b_i == 0:
+					_execute_single_queued_bullet(bullet_data)
+				else:
+					pending_burst_shots.append(bullet_data)
 
 		GameState.consume_atb()
-		# 2x Command perk refunds 45% ATB immediately!
 		if weapon.perks.has("2comm"):
 			GameState.atb = 45.0
 			EventBus.floating_text_requested.emit("2x COMMAND!", player.global_position + Vector2(0, -60), Color(1.0, 0.85, 0.3))
 			EventBus.player_stats_changed.emit()
 
 	GameState.set_tactical_pause(false)
+
+
+func _execute_single_queued_bullet(shot: Dictionary) -> void:
+	var target_var: Variant = shot.get("target")
+	if not is_instance_valid(target_var):
+		return
+	var target: EnemyBase = target_var as EnemyBase
+	if target == null or target.hp <= 0:
+		return
+	var jit: float = float(shot.get("jitter", 5.0))
+	var offset := Vector2(randf_range(-jit, jit), randf_range(-jit, jit))
+	AudioManager.play_weapon_sfx(str(shot.get("weapon_id", "m93r")), false)
+	EventBus.screen_shake_requested.emit(2.6, 0.08)
+	tracer_lines.append({
+		"from": player.global_position + Vector2(0, -24),
+		"to": target.global_position + Vector2(0, -24) + offset,
+		"color": shot.get("color", Color(1.0, 0.92, 0.55, 1.0)) as Color,
+		"width": float(shot.get("width", 2.4)),
+		"ttl": 0.12,
+	})
+	target.take_damage(int(shot["damage"]), bool(shot["is_crit"]), str(shot["hit_part"]))
+	if bool(shot.get("apply_perks", false)) and is_instance_valid(target) and target.hp > 0:
+		target.apply_weapon_perks(shot["perks"] as PackedStringArray)
+	fx_layer.queue_redraw()
 
 
 func cast_detox() -> void:
