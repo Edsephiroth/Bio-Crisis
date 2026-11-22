@@ -7,14 +7,14 @@ static func create_starter_weapons() -> Array[WeaponData]:
 	var list: Array[WeaponData] = []
 
 	list.append(_make_weapon(
-		"m93r", "M93R", "9mm", 18, 230.0, 3, 18, "burst", 0.095, PackedStringArray(["quickdraw"]),
+		"m93r", "M93R", "9mm", 18, 230.0, 3, 18, "burst", 0.16, PackedStringArray(["quickdraw"]),
 		"res://assets/icons/Pe1_icon_inv_pistol.png",
-		"Pistola italiana 9mm com rajada de 3 tiros rápidos. Perk: Quickdraw."
+		"Pistola italiana 9mm com rajada cadenciada de 3 tiros. Perk: Quickdraw."
 	))
 	list.append(_make_weapon(
-		"glock19", "Glock 19", "9mm", 14, 215.0, 2, 16, "semi", 0.13, PackedStringArray(["frost", "critup"]),
+		"glock19", "Glock 19", "9mm", 14, 215.0, 2, 16, "semi", 0.28, PackedStringArray(["frost", "critup"]),
 		"res://assets/icons/Pe1_icon_inv_pistol.png",
-		"Pistola leve semiautomática (2 tiros). Perks: Frost + Crit Up."
+		"Pistola semiautomática de tiro pausado (2 disparos). Perks: Frost + Crit Up."
 	))
 	list.append(_make_weapon(
 		"m870", "M870 Shotgun", "12G", 36, 165.0, 1, 6, "spread", 0.0, PackedStringArray(["heat"]),

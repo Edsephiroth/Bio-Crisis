@@ -25,6 +25,9 @@ var dash_timer: float = 0.0
 var dash_dir: Vector2 = Vector2.DOWN
 var dash_cooldown: float = 0.0
 
+var recoil_velocity: Vector2 = Vector2.ZERO
+var recoil_lock_timer: float = 0.0
+
 var shake_intensity: float = 0.0
 var shake_timer: float = 0.0
 var sphere_pulse: float = 0.0
@@ -39,6 +42,17 @@ func _ready() -> void:
 
 func is_invulnerable() -> bool:
 	return dash_timer > 0.0
+
+
+func apply_recoil(shot_dir: Vector2, push_speed: float, recovery_time: float) -> void:
+	if shot_dir.length_squared() < 0.001:
+		return
+	var back_dir: Vector2 = -shot_dir.normalized()
+	recoil_velocity = back_dir * push_speed
+	recoil_lock_timer = maxf(recoil_lock_timer, recovery_time)
+	# Face the shot direction during recoil
+	facing_dir = shot_dir.normalized()
+	dir8 = _vec_to_dir8(facing_dir)
 
 
 func _vec_to_dir8(v: Vector2) -> int:
@@ -141,6 +155,17 @@ func _physics_process(delta: float) -> void:
 		sprite.modulate = Color(0.7, 0.8, 1.2, 1.0)
 	else:
 		sprite.modulate = Color.WHITE
+
+	# Physical weapon recoil knockback & posture recovery
+	if recoil_lock_timer > 0.0 or recoil_velocity.length() > 8.0:
+		recoil_lock_timer = maxf(0.0, recoil_lock_timer - delta)
+		velocity = recoil_velocity
+		move_and_slide()
+		recoil_velocity = recoil_velocity.move_toward(Vector2.ZERO, 920.0 * delta)
+		_set_sheet_mode("walk")
+		sprite.frame = dir8 * 8
+		if recoil_lock_timer > 0.0:
+			return
 
 	# Realistic evade/sprint burst: faster run animation frames, no supernatural VFX
 	if dash_timer > 0.0:

@@ -41,3 +41,8 @@ Em vez de poderes biológicos da protagonista, o sistema de habilidades táticas
 * **Perks & Modificadores transferíveis (Tune)** com personalidade própria do *Bio Crisis* + combos de **Bio-Ressonância**.
 * **Inimigos visíveis no mapa + Lockdown Tático** em salas de emboscada/chefe com troca dinâmica de música.
 * **Chefes com Partes Destrutíveis** (*Braços*, *Corpo*, *Núcleo*), **Status Negativos** (`Poison`, `Darkness`, `Stiff`), **Drops no chão** e **Aftermath**.
+
+## 4. Proficiência Invisível & Coice Realista
+* **Sem barras nem números na UI**: Elisabeth começa inexperiente com armas pesadas (especialmente a **Shotgun M870**), sofrendo empurrão físico de coice para trás, breve pausa de recuperação de postura e cone mais aberto.
+* **Evolução orgânica sentida na gameplay**: conforme ela usa cada classe de arma (`shotgun`, `rifle`, `smg`, `pistol`), um índice oculto (`weapon_familiarity`, persistido no Save) reduz gradualmente o coice, estabiliza a postura, fecha a dispersão e deixa a cadência mais firme.
+* **Pistolas cadenciadas**: tiros mais pausados (`Glock 19` e `M93R`) contrastando com a rajada rápida da `MP5A5` e o coice pesado da `M870`.

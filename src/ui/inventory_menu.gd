@@ -226,15 +226,10 @@ func _build_inventory_tab() -> void:
 		else:
 			_style_button(btn, Color(0.05, 0.06, 0.09, 0.85), Color(0.24, 0.27, 0.34, 0.8), Color(0.72, 0.76, 0.82), 1, 5)
 		btn.pressed.connect(func() -> void:
-			if cid == "pe":
-				_switch_tab("pe")
-			elif cid == "bp":
-				_switch_tab("status")
-			else:
-				inv_category = cid
-				selected_row_index = 0
-				tune_mode_active = false
-				_refresh()
+			inv_category = cid
+			selected_row_index = 0
+			tune_mode_active = false
+			_refresh()
 		)
 		sidebar.add_child(btn)
 
@@ -502,6 +497,46 @@ func _get_inventory_rows() -> Array[Dictionary]:
 				"desc": a.description,
 				"stats": "DEF: +%d | PE-DEF: +%d | Bonus HP: +%d" % [a.defense_bonus, a.pe_defense_bonus, a.hp_bonus],
 			})
+	elif inv_category == "pe":
+		var quick_skills: Array = [
+			["heal", "HEAL 1", 30, "Restaura HP com soro celular."],
+			["haste", "HASTE", 25, "Acelera movimento e barra ATB."],
+			["barrier", "BARRIER", 35, "Campo defensivo (-35% dano por 20s)."],
+			["slow", "SLOW", 30, "Reduz velocidade dos inimigos em 50%."],
+			["scan", "SCAN", 15, "Escaneia HP e ataque do alvo mais próximo."],
+			["energy_shot", "ENERGY SHOT", 30, "Disparo perfurante em linha reta."],
+			["liberate", "LIBERATE", 80, "Descarga de área contra todos ao redor."],
+		]
+		for sk in quick_skills:
+			rows.append({
+				"kind": "pe_skill",
+				"skill_id": str(sk[0]),
+				"name": str(sk[1]),
+				"type": "TECH",
+				"qty": int(sk[2]),
+				"bp": 0,
+				"icon": "res://assets/icons/Pe1_icon_inv_cure.png",
+				"desc": str(sk[3]),
+				"stats": "Custo: %d PE  |  Disponível: %d PE" % [int(sk[2]), int(GameState.pe)],
+			})
+	elif inv_category == "bp":
+		for upg in [
+			["hp", "+15 MAX HP", 10, "Aumenta permanentemente o HP máximo de Elisabeth."],
+			["pe", "+10 MAX PE", 10, "Aumenta a capacidade máxima da bateria tática."],
+			["atk", "+3 ATAQUE", 15, "Aumenta o poder ofensivo base."],
+			["atb", "+0.2 VELOCIDADE TA", 15, "Acelera o preenchimento da barra ATB."],
+		]:
+			rows.append({
+				"kind": "bp_upgrade",
+				"stat_id": str(upg[0]),
+				"name": str(upg[1]),
+				"type": "UPGRADE",
+				"qty": 1,
+				"bp": int(upg[2]),
+				"icon": "res://assets/icons/Pe1_icon_inv_boost1.png",
+				"desc": str(upg[3]),
+				"stats": "Custo: %d BP  |  Seu BP: %d" % [int(upg[2]), GameState.bp],
+			})
 	else:
 		rows.append({
 			"kind": "medkit", "name": "Medicine 1 (Medkit)", "type": "MEDICINE", "qty": GameState.medkits, "bp": 50,
@@ -549,6 +584,11 @@ func _execute_inventory_primary(item: Dictionary) -> void:
 			feedback_msg = "PE Light utilizado (+55 PE)!"
 		else:
 			feedback_msg = "Sem PE Light ou PE já está cheio."
+	elif kind == "pe_skill":
+		_cast_pe_from_menu(str(item.get("skill_id", "")))
+		return
+	elif kind == "bp_upgrade":
+		feedback_msg = GameState.spend_bp_upgrade(str(item.get("stat_id", "")))
 	else:
 		feedback_msg = str(item.get("desc", ""))
 	_refresh()

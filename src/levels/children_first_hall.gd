@@ -578,17 +578,24 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 			EventBus.floating_text_requested.emit("OUT OF RANGE", target.global_position + Vector2(0, -72), Color(1.0, 0.65, 0.25))
 		var hit_part: String = GameState.selected_boss_part if in_range else "body"
 
+		var fam: float = GameState.get_weapon_familiarity(weapon)
+		var shot_dir: Vector2 = (target.global_position - player.global_position).normalized()
+
 		if weapon.fire_pattern == "spread":
-			# SHOTGUN: 5 simultaneous pellets in a cone, hitting main target + nearby foes in cone!
+			# SHOTGUN: Heavy physical recoil & wider spread when inexperienced; tightens organically with practice
 			var pellet_count: int = 5
 			var dmg_per_pellet: int = maxi(4, int(round(base_total / float(pellet_count))))
-			var base_dir: Vector2 = (target.global_position - player.global_position).normalized()
 			AudioManager.play_weapon_sfx(weapon.id, false)
-			EventBus.screen_shake_requested.emit(7.0, 0.22)
-			var angles: Array[float] = [-0.28, -0.14, 0.0, 0.14, 0.28]
+			var recoil_push: float = lerpf(265.0, 90.0, fam)
+			var recoil_rec: float = lerpf(0.34, 0.10, fam)
+			var shake_pwr: float = lerpf(8.5, 4.5, fam)
+			var spread_scale: float = lerpf(1.25, 0.75, fam)
+			player.apply_recoil(shot_dir, recoil_push, recoil_rec)
+			EventBus.screen_shake_requested.emit(shake_pwr, 0.24)
+			var angles: Array[float] = [-0.28 * spread_scale, -0.14 * spread_scale, 0.0, 0.14 * spread_scale, 0.28 * spread_scale]
 			var enemies_hit: Dictionary = {}
 			for ang in angles:
-				var pdir: Vector2 = base_dir.rotated(ang)
+				var pdir: Vector2 = shot_dir.rotated(ang)
 				var end_p: Vector2 = player.global_position + pdir * (max_r + 18.0)
 				tracer_lines.append({
 					"from": player.global_position + Vector2(0, -24),
@@ -597,7 +604,6 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 					"width": 2.8,
 					"ttl": 0.18,
 				})
-				# Check enemies inside cone angle
 				for node in get_tree().get_nodes_in_group("enemies"):
 					var en: EnemyBase = node as EnemyBase
 					if en == null:
@@ -616,6 +622,7 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 					en.take_damage(total_en_dmg, is_c, hit_part)
 					if is_instance_valid(en) and en.hp > 0:
 						en.apply_weapon_perks(weapon.perks)
+			GameState.record_weapon_fire(weapon)
 			fx_layer.queue_redraw()
 		else:
 			# SEQUENTIAL SHOTS (SMG 5x auto / M93R 3x burst / Rifle 2x precision / Pistol 2x semi)
@@ -629,7 +636,19 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 			elif weapon.fire_pattern == "precision":
 				tracer_col = Color(1.0, 0.98, 0.85, 1.0)
 
-			var interval: float = maxf(0.05, weapon.shot_interval)
+			# Cadence steadies slightly (~18%) and spread tightens organically as Elisabeth gets used to the gun
+			var interval: float = maxf(0.055, weapon.shot_interval * lerpf(1.0, 0.82, fam))
+			var base_jit: float = 16.0 if weapon.fire_pattern == "auto" else (8.0 if weapon.fire_pattern == "burst" else 4.0)
+			var jit: float = base_jit * lerpf(1.25, 0.65, fam)
+			var per_recoil: float = 0.0
+			var per_rec_t: float = 0.0
+			if weapon.fire_pattern == "precision":
+				per_recoil = lerpf(115.0, 40.0, fam)
+				per_rec_t = lerpf(0.16, 0.05, fam)
+			elif weapon.fire_pattern == "auto":
+				per_recoil = lerpf(55.0, 18.0, fam)
+				per_rec_t = lerpf(0.06, 0.02, fam)
+
 			for b_i in range(num_bullets):
 				var is_c: bool = in_range and (randf() < crit_chance)
 				var b_dmg: int = maxi(3, int(round(per_bullet_base * (1.45 if is_c else 1.0))))
@@ -643,13 +662,16 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 					"weapon_id": weapon.id,
 					"color": tracer_col,
 					"width": 2.2 if weapon.fire_pattern == "precision" else 2.5,
-					"jitter": 14.0 if weapon.fire_pattern == "auto" else (7.0 if weapon.fire_pattern == "burst" else 3.0),
+					"jitter": jit,
+					"recoil_push": per_recoil,
+					"recoil_rec": per_rec_t,
 					"apply_perks": b_i == num_bullets - 1,
 				}
 				if b_i == 0:
 					_execute_single_queued_bullet(bullet_data)
 				else:
 					pending_burst_shots.append(bullet_data)
+			GameState.record_weapon_fire(weapon)
 
 		GameState.consume_atb()
 		if weapon.perks.has("2comm"):
@@ -669,6 +691,10 @@ func _execute_single_queued_bullet(shot: Dictionary) -> void:
 		return
 	var jit: float = float(shot.get("jitter", 5.0))
 	var offset := Vector2(randf_range(-jit, jit), randf_range(-jit, jit))
+	var rec_push: float = float(shot.get("recoil_push", 0.0))
+	if rec_push > 0.0:
+		var sdir: Vector2 = (target.global_position - player.global_position).normalized()
+		player.apply_recoil(sdir, rec_push, float(shot.get("recoil_rec", 0.04)))
 	AudioManager.play_weapon_sfx(str(shot.get("weapon_id", "m93r")), false)
 	EventBus.screen_shake_requested.emit(2.6, 0.08)
 	tracer_lines.append({

@@ -62,6 +62,8 @@ var equipped_weapon_index: int = 0
 var armors: Array[ArmorData] = []
 var equipped_armor_index: int = 0
 var bestiary_kills: Dictionary = {}
+## Hidden organic weapon familiarity (0.0 = inexperienced -> 1.0 = steady handling). Never shown as a bar/number.
+var weapon_familiarity: Dictionary = {}
 
 const PE_EXP_CHART: Dictionary = {
 	1: 3, 2: 8, 3: 19, 4: 28, 5: 45, 6: 70, 7: 105, 8: 150, 9: 210, 10: 290,
@@ -99,6 +101,7 @@ func reset_run() -> void:
 		"5.56mm": 90,
 	}
 	bestiary_kills = {}
+	weapon_familiarity = {}
 
 	haste_timer = 0.0
 	barrier_timer = 0.0
@@ -176,6 +179,27 @@ func has_weapon_perk(perk_id: String) -> bool:
 
 func has_armor_perk(perk_id: String) -> bool:
 	return get_equipped_armor().perks.has(perk_id)
+
+
+func get_weapon_class_key(weapon: WeaponData) -> String:
+	match weapon.fire_pattern:
+		"spread": return "shotgun"
+		"auto": return "smg"
+		"precision": return "rifle"
+		_: return "pistol"
+
+
+func get_weapon_familiarity(weapon: WeaponData) -> float:
+	var key: String = get_weapon_class_key(weapon)
+	return clampf(float(weapon_familiarity.get(key, 0.0)), 0.0, 1.0)
+
+
+func record_weapon_fire(weapon: WeaponData) -> void:
+	var key: String = get_weapon_class_key(weapon)
+	var cur: float = float(weapon_familiarity.get(key, 0.0))
+	# Heavy weapons take longer to master organically (~14 shots for shotgun, ~10 for rifle/smg/pistol)
+	var step: float = 0.07 if key == "shotgun" else 0.10
+	weapon_familiarity[key] = clampf(cur + step, 0.0, 1.0)
 
 
 func get_current_ammo() -> int:
@@ -582,6 +606,7 @@ func save_game(player_world_pos: Vector2 = Vector2(-1, -1)) -> bool:
 		"defeated_enemy_keys": defeated_enemy_keys,
 		"seen_dialogues": seen_dialogues,
 		"bestiary_kills": bestiary_kills,
+		"weapon_familiarity": weapon_familiarity,
 	}
 
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -664,6 +689,8 @@ func load_game() -> bool:
 		seen_dialogues = (data["seen_dialogues"] as Dictionary).duplicate()
 	if data.get("bestiary_kills") is Dictionary:
 		bestiary_kills = (data["bestiary_kills"] as Dictionary).duplicate()
+	if data.get("weapon_familiarity") is Dictionary:
+		weapon_familiarity = (data["weapon_familiarity"] as Dictionary).duplicate()
 
 	EventBus.player_stats_changed.emit()
 	return true
