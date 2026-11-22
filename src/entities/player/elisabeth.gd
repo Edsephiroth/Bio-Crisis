@@ -134,14 +134,9 @@ func _set_sheet_mode(mode: String) -> void:
 	if active_sheet_mode == mode:
 		return
 	active_sheet_mode = mode
-	if mode == "run":
-		sprite.texture = RUN_SHEET
-		sprite.hframes = 8
-		sprite.vframes = 4
-	else:
-		sprite.texture = WALK_SHEET
-		sprite.hframes = 8
-		sprite.vframes = 8
+	sprite.texture = RUN_SHEET if mode == "run" else WALK_SHEET
+	sprite.hframes = 8
+	sprite.vframes = 8
 
 
 func _physics_process(delta: float) -> void:
@@ -167,7 +162,7 @@ func _physics_process(delta: float) -> void:
 		if recoil_lock_timer > 0.0:
 			return
 
-	# Realistic evade/sprint burst: faster run animation frames, no supernatural VFX
+	# Realistic evade/sprint burst: faster 8-dir run animation frames, no supernatural VFX
 	if dash_timer > 0.0:
 		dash_timer -= delta
 		velocity = dash_dir * dash_speed
@@ -179,8 +174,7 @@ func _physics_process(delta: float) -> void:
 		if anim_timer >= 1.0:
 			anim_timer -= 1.0
 			anim_frame = (anim_frame + 1) % 8
-		var r4: int = _dir8_to_dir4(dir8, dash_dir)
-		sprite.frame = r4 * 8 + anim_frame
+		sprite.frame = dir8 * 8 + anim_frame
 		flashlight.position = Vector2(0, -18) + dash_dir * 34.0
 		return
 
@@ -212,7 +206,7 @@ func _physics_process(delta: float) -> void:
 		sprite.scale = Vector2(0.76, 0.76)
 		sprite.position = Vector2(0, -34)
 
-		var fps: float = (13.0 if is_running else 9.5) * (1.25 if GameState.haste_timer > 0.0 else 1.0)
+		var fps: float = (14.5 if is_running else 9.5) * (1.25 if GameState.haste_timer > 0.0 else 1.0)
 		anim_timer += delta * fps
 		if anim_timer >= 1.0:
 			anim_timer -= 1.0
@@ -220,8 +214,7 @@ func _physics_process(delta: float) -> void:
 			if anim_frame == 2 or anim_frame == 6:
 				AudioManager.play_sfx("step", -11.0, 0.14)
 
-		var row_to_draw: int = _dir8_to_dir4(dir8, facing_dir) if is_running else dir8
-		sprite.frame = row_to_draw * 8 + anim_frame
+		sprite.frame = dir8 * 8 + anim_frame
 	else:
 		idle_timer += delta * 3.2
 		_set_sheet_mode("walk")
