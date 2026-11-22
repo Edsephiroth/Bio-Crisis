@@ -12,9 +12,10 @@ const RUN_SHEET: Texture2D = preload("res://assets/sprites/elisabeth_run_sheet.p
 @onready var flashlight: PointLight2D = $Flashlight
 @onready var camera: Camera2D = $Camera2D
 
-# Row order in sheets: 0 = D, 1 = U, 2 = L, 3 = R
+# 8-direction rows in WALK_SHEET: 0=D, 1=U, 2=L, 3=R, 4=DL, 5=DR, 6=UL, 7=UR
+# 4-direction rows in RUN_SHEET:  0=D, 1=U, 2=L, 3=R
 var facing_dir: Vector2 = Vector2.DOWN
-var dir_row: int = 0
+var dir8: int = 0
 var anim_timer: float = 0.0
 var anim_frame: int = 0
 var idle_timer: float = 0.0
@@ -40,6 +41,35 @@ func is_invulnerable() -> bool:
 	return dash_timer > 0.0
 
 
+func _vec_to_dir8(v: Vector2) -> int:
+	# Angle in degrees: 0=Right, 90=Down, -90=Up, +-180=Left
+	var deg: float = rad_to_deg(v.angle())
+	if deg >= -22.5 and deg < 22.5:
+		return 3 # R
+	elif deg >= 22.5 and deg < 67.5:
+		return 5 # DR
+	elif deg >= 67.5 and deg < 112.5:
+		return 0 # D
+	elif deg >= 112.5 and deg < 157.5:
+		return 4 # DL
+	elif deg >= 157.5 or deg < -157.5:
+		return 2 # L
+	elif deg >= -157.5 and deg < -112.5:
+		return 6 # UL
+	elif deg >= -112.5 and deg < -67.5:
+		return 1 # U
+	else:
+		return 7 # UR
+
+
+func _dir8_to_dir4(d8: int, v: Vector2) -> int:
+	if d8 <= 3:
+		return d8
+	if absf(v.x) >= absf(v.y):
+		return 3 if v.x >= 0.0 else 2
+	return 0 if v.y >= 0.0 else 1
+
+
 func trigger_dash() -> void:
 	if GameState.is_world_paused() or dash_cooldown > 0.0 or dash_timer > 0.0:
 		return
@@ -47,10 +77,7 @@ func trigger_dash() -> void:
 	if input_vec.length() < 0.05 and GameState.virtual_move_vector.length() > 0.05:
 		input_vec = GameState.virtual_move_vector
 	dash_dir = input_vec.normalized() if input_vec.length() > 0.1 else facing_dir
-	if absf(dash_dir.x) > absf(dash_dir.y):
-		dir_row = 3 if dash_dir.x > 0.0 else 2
-	else:
-		dir_row = 0 if dash_dir.y > 0.0 else 1
+	dir8 = _vec_to_dir8(dash_dir)
 	dash_timer = 0.24
 	dash_cooldown = 2.0
 	AudioManager.play_sfx("dash", -4.0, 0.06)
@@ -100,7 +127,7 @@ func _set_sheet_mode(mode: String) -> void:
 	else:
 		sprite.texture = WALK_SHEET
 		sprite.hframes = 8
-		sprite.vframes = 4
+		sprite.vframes = 8
 
 
 func _physics_process(delta: float) -> void:
@@ -108,7 +135,6 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		return
 
-	# Subtle tint only for negative status ailments
 	if GameState.poison_timer > 0.0:
 		sprite.modulate = Color(0.75, 1.15, 0.72, 1.0)
 	elif GameState.stiff_timer > 0.0:
@@ -128,7 +154,8 @@ func _physics_process(delta: float) -> void:
 		if anim_timer >= 1.0:
 			anim_timer -= 1.0
 			anim_frame = (anim_frame + 1) % 8
-		sprite.frame = dir_row * 8 + anim_frame
+		var r4: int = _dir8_to_dir4(dir8, dash_dir)
+		sprite.frame = r4 * 8 + anim_frame
 		flashlight.position = Vector2(0, -18) + dash_dir * 34.0
 		return
 
@@ -154,28 +181,26 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	if raw_len > 0.1:
+		facing_dir = input_vec.normalized()
+		dir8 = _vec_to_dir8(facing_dir)
 		_set_sheet_mode("run" if is_running else "walk")
 		sprite.scale = Vector2(0.76, 0.76)
 		sprite.position = Vector2(0, -34)
 
-		facing_dir = input_vec.normalized()
-		if absf(facing_dir.x) > absf(facing_dir.y):
-			dir_row = 3 if facing_dir.x > 0.0 else 2
-		else:
-			dir_row = 0 if facing_dir.y > 0.0 else 1
-
-		var fps: float = (13.0 if is_running else 9.0) * (1.25 if GameState.haste_timer > 0.0 else 1.0)
+		var fps: float = (13.0 if is_running else 9.5) * (1.25 if GameState.haste_timer > 0.0 else 1.0)
 		anim_timer += delta * fps
 		if anim_timer >= 1.0:
 			anim_timer -= 1.0
 			anim_frame = (anim_frame + 1) % 8
 			if anim_frame == 2 or anim_frame == 6:
 				AudioManager.play_sfx("step", -11.0, 0.14)
-		sprite.frame = dir_row * 8 + anim_frame
+
+		var row_to_draw: int = _dir8_to_dir4(dir8, facing_dir) if is_running else dir8
+		sprite.frame = row_to_draw * 8 + anim_frame
 	else:
 		idle_timer += delta * 3.2
 		_set_sheet_mode("walk")
-		sprite.frame = dir_row * 8
+		sprite.frame = dir8 * 8
 		var wave: float = sin(idle_timer)
 		var breath_y: float = 1.0 + 0.018 * wave
 		var breath_x: float = 1.0 - 0.008 * wave
@@ -186,12 +211,10 @@ func _physics_process(delta: float) -> void:
 
 
 func _draw() -> void:
-	# Subtle ground shadow
 	draw_set_transform(Vector2(0, 4), 0.0, Vector2(1.0, 0.45))
 	draw_circle(Vector2.ZERO, 16.0, Color(0.0, 0.0, 0.0, 0.45))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	# Tactical targeting range dome when paused
 	if GameState.is_tactical_paused:
 		var r: float = GameState.get_current_range_px()
 		var is_energy: bool = GameState.tactical_action_mode == "energy_shot"
