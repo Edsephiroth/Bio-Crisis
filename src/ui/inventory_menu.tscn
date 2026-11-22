@@ -23,109 +23,305 @@ texture = ExtResource("2_bg")
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Backdrop" type="ColorRect" parent="."]
+[node name="DarkTint" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.02, 0.05, 0.1, 0.78)
+color = Color(0.02, 0.03, 0.05, 0.72)
 
-[node name="MainPanel" type="PanelContainer" parent="."]
+[node name="RootVBox" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 18.0
-offset_top = 14.0
-offset_right = -18.0
-offset_bottom = -14.0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 8
 
-[node name="VBox" type="VBoxContainer" parent="MainPanel"]
+[node name="TopHeader" type="HBoxContainer" parent="RootVBox"]
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-theme_override_constants/separation = 7
+theme_override_constants/separation = 10
 
-[node name="HeaderRow" type="HBoxContainer" parent="MainPanel/VBox"]
+[node name="LocationBox" type="HBoxContainer" parent="RootVBox/TopHeader"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="L1Badge" type="Label" parent="RootVBox/TopHeader/LocationBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 24)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "L1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LocVBox" type="VBoxContainer" parent="RootVBox/TopHeader/LocationBox"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="LocTag" type="Label" parent="RootVBox/TopHeader/LocationBox/LocVBox"]
+layout_mode = 2
+modulate = Color(0.15, 0.85, 0.55, 1)
+theme_override_font_sizes/font_size = 9
+text = "LOCATION"
+
+[node name="LocationLabel" type="Label" parent="RootVBox/TopHeader/LocationBox/LocVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+modulate = Color(0.98, 0.78, 0.22, 1)
+theme_override_font_sizes/font_size = 11
+text = "ONG Children First - Salão de Gala"
+
+[node name="TabsHBox" type="HBoxContainer" parent="RootVBox/TopHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="TabInventory" type="Button" parent="RootVBox/TopHeader/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "INVENTORY"
+
+[node name="TabMap" type="Button" parent="RootVBox/TopHeader/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "MAP"
+
+[node name="TabPE" type="Button" parent="RootVBox/TopHeader/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "BIO-ENERGY"
+
+[node name="TabStatus" type="Button" parent="RootVBox/TopHeader/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(102, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "STATUS / TUNE"
+
+[node name="TabExtras" type="Button" parent="RootVBox/TopHeader/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "EXTRAS"
+
+[node name="TabSettings" type="Button" parent="RootVBox/TopHeader/TabsHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(74, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "OPTIONS"
+
+[node name="RightHeaderBox" type="HBoxContainer" parent="RootVBox/TopHeader"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TimeVBox" type="VBoxContainer" parent="RootVBox/TopHeader/RightHeaderBox"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="TimeTag" type="Label" parent="RootVBox/TopHeader/RightHeaderBox/TimeVBox"]
+layout_mode = 2
+modulate = Color(0.6, 0.65, 0.72, 1)
+theme_override_font_sizes/font_size = 9
+text = "PLAY TIME"
+horizontal_alignment = 2
+
+[node name="PlayTimeLabel" type="Label" parent="RootVBox/TopHeader/RightHeaderBox/TimeVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+modulate = Color(0.98, 0.78, 0.22, 1)
+theme_override_font_sizes/font_size = 11
+text = "00:00:00"
+horizontal_alignment = 2
+
+[node name="BtnClose" type="Button" parent="RootVBox/TopHeader/RightHeaderBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "X"
+
+[node name="MainBodyHBox" type="HBoxContainer" parent="RootVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="LeftMainPanel" type="PanelContainer" parent="RootVBox/MainBodyHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.15
+
+[node name="LeftContainer" type="VBoxContainer" parent="RootVBox/MainBodyHBox/LeftMainPanel"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="TabInventory" type="Button" parent="MainPanel/VBox/HeaderRow"]
+[node name="RightAgentPanel" type="PanelContainer" parent="RootVBox/MainBodyHBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 12
-text = "INVENTÁRIO"
+size_flags_stretch_ratio = 1.0
 
-[node name="TabMap" type="Button" parent="MainPanel/VBox/HeaderRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
+[node name="AgentVBox" type="VBoxContainer" parent="RootVBox/MainBodyHBox/RightAgentPanel"]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 12
-text = "MAPA"
+theme_override_constants/separation = 6
 
-[node name="TabPE" type="Button" parent="MainPanel/VBox/HeaderRow"]
+[node name="BustRect" type="TextureRect" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 12
-text = "ENERGIA PE"
-
-[node name="TabStatus" type="Button" parent="MainPanel/VBox/HeaderRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 12
-text = "STATUS"
-
-[node name="TabExtras" type="Button" parent="MainPanel/VBox/HeaderRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 12
-text = "EXTRAS"
-
-[node name="TabSettings" type="Button" parent="MainPanel/VBox/HeaderRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 12
-text = "CONFIG"
-
-[node name="BtnClose" type="Button" parent="MainPanel/VBox/HeaderRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(80, 38)
-layout_mode = 2
-theme_override_font_sizes/font_size = 12
-text = "FECHAR"
-
-[node name="StatusSummary" type="Label" parent="MainPanel/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-modulate = Color(0.55, 0.92, 1, 1)
-theme_override_font_sizes/font_size = 12
-text = "ELISABETH LV.1"
-
-[node name="FeedbackLabel" type="Label" parent="MainPanel/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-text = ""
-
-[node name="Scroll" type="ScrollContainer" parent="MainPanel/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
 
-[node name="ContentVBox" type="VBoxContainer" parent="MainPanel/VBox/Scroll"]
+[node name="AgentNameLabel" type="Label" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Elisabeth Shelley"
+horizontal_alignment = 2
+
+[node name="AgentRoleLabel" type="Label" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox"]
 unique_name_in_owner = true
 layout_mode = 2
+modulate = Color(0.15, 0.85, 0.95, 1)
+theme_override_font_sizes/font_size = 11
+text = "ENGLISH TEACHER  •  LV. 01"
+horizontal_alignment = 2
+
+[node name="AgentStatsCard" type="PanelContainer" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="StatsVBox" type="VBoxContainer" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="HpRow" type="HBoxContainer" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox"]
+layout_mode = 2
+
+[node name="HpTag" type="Label" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox/HpRow"]
+layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
+modulate = Color(0.95, 0.25, 0.32, 1)
+theme_override_font_sizes/font_size = 11
+text = "HP"
+
+[node name="RightHpVal" type="Label" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox/HpRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "445 / 445"
+
+[node name="RightHpBar" type="ProgressBar" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+max_value = 445.0
+value = 445.0
+show_percentage = false
+
+[node name="PeRow" type="HBoxContainer" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox"]
+layout_mode = 2
+
+[node name="PeTag" type="Label" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox/PeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+modulate = Color(0.76, 0.45, 0.98, 1)
+theme_override_font_sizes/font_size = 11
+text = "PE (BIO-ENERGY)"
+
+[node name="RightPeVal" type="Label" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox/PeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "100 / 100"
+
+[node name="RightPeBar" type="ProgressBar" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="ExpRow" type="HBoxContainer" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox"]
+layout_mode = 2
+
+[node name="ExpTag" type="Label" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox/ExpRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+modulate = Color(0.65, 0.7, 0.78, 1)
+theme_override_font_sizes/font_size = 10
+text = "EXP"
+
+[node name="RightExpVal" type="Label" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox/ExpRow"]
+unique_name_in_owner = true
+layout_mode = 2
+modulate = Color(0.75, 0.8, 0.85, 1)
+theme_override_font_sizes/font_size = 10
+text = "0 / 3"
+
+[node name="RightExpBar" type="ProgressBar" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="BpBox" type="PanelContainer" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BpRow" type="HBoxContainer" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox/BpBox"]
+layout_mode = 2
+
+[node name="BpTag" type="Label" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox/BpBox/BpRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+modulate = Color(0.98, 0.78, 0.2, 1)
+theme_override_font_sizes/font_size = 11
+text = "AVAILABLE BP"
+
+[node name="RightBpVal" type="Label" parent="RootVBox/MainBodyHBox/RightAgentPanel/AgentVBox/AgentStatsCard/StatsVBox/BpBox/BpRow"]
+unique_name_in_owner = true
+layout_mode = 2
+modulate = Color(0.98, 0.82, 0.25, 1)
+theme_override_font_sizes/font_size = 12
+text = "0"
+
+[node name="FooterBar" type="HBoxContainer" parent="RootVBox"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+
+[node name="HintsLabel" type="Label" parent="RootVBox/FooterBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+modulate = Color(0.62, 0.67, 0.74, 1)
+theme_override_font_sizes/font_size = 10
+text = "[X] Return to Exploration    [O] Select / Use    [△] EXAMINE    [□] Equip / Tune"
+
+[node name="OsLabel" type="Label" parent="RootVBox/FooterBar"]
+layout_mode = 2
+modulate = Color(0.15, 0.85, 0.95, 1)
+theme_override_font_sizes/font_size = 10
+text = "BIO-CRISIS OS V1.0  •  SURVIVAL PROTOCOL"
+horizontal_alignment = 2

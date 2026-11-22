@@ -225,6 +225,42 @@ func use_pe_light() -> bool:
 	return true
 
 
+func spend_bp_upgrade(stat_type: String) -> String:
+	var cost: int = 10
+	match stat_type:
+		"hp":
+			cost = 10
+			if bp < cost:
+				return "BP insuficiente (precisa de %d BP)." % cost
+			bp -= cost
+			max_hp += 15
+			hp += 15
+		"pe":
+			cost = 10
+			if bp < cost:
+				return "BP insuficiente (precisa de %d BP)." % cost
+			bp -= cost
+			max_pe += 10.0
+			pe = minf(max_pe, pe + 10.0)
+		"atk":
+			cost = 15
+			if bp < cost:
+				return "BP insuficiente (precisa de %d BP)." % cost
+			bp -= cost
+			base_attack += 3
+		"atb":
+			cost = 15
+			if bp < cost:
+				return "BP insuficiente (precisa de %d BP)." % cost
+			bp -= cost
+			atb_rate += 3.5
+		_:
+			return ""
+	AudioManager.play_sfx("level_up", -3.0, 0.05)
+	EventBus.player_stats_changed.emit()
+	return "Evolução Bio-Celular aplicada!"
+
+
 func get_current_range_px() -> float:
 	var base_range: float = get_equipped_weapon().range_px
 	if tactical_action_mode == "energy_shot":
