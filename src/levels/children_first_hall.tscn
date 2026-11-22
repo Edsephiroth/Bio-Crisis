@@ -1,0 +1,60 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://src/levels/children_first_hall.gd" id="1_level"]
+[ext_resource type="PackedScene" path="res://src/entities/player/elisabeth.tscn" id="2_player"]
+[ext_resource type="Script" path="res://src/levels/fx_layer.gd" id="3_fx"]
+[ext_resource type="Texture2D" path="res://assets/lights/light_radial.png" id="4_light"]
+[ext_resource type="PackedScene" path="res://src/ui/hud.tscn" id="5_hud"]
+[ext_resource type="Shader" path="res://shaders/crt_vignette.gdshader" id="6_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_crt"]
+shader = ExtResource("6_shader")
+shader_parameter/vignette_intensity = 0.42
+shader_parameter/scanline_opacity = 0.05
+
+[node name="ChildrenFirstHall" type="Node2D"]
+script = ExtResource("1_level")
+
+[node name="CanvasModulate" type="CanvasModulate" parent="."]
+color = Color(0.32, 0.36, 0.46, 1)
+
+[node name="WallsBody" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="Lights" type="Node2D" parent="."]
+
+[node name="EmergencyLight" type="PointLight2D" parent="Lights"]
+color = Color(1, 0.25, 0.25, 1)
+energy = 1.0
+texture = ExtResource("4_light")
+texture_scale = 3.6
+
+[node name="SafeRoomLight" type="PointLight2D" parent="Lights"]
+color = Color(0.28, 1, 0.6, 1)
+energy = 1.15
+texture = ExtResource("4_light")
+texture_scale = 2.0
+
+[node name="Entities" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="Elisabeth" parent="Entities" instance=ExtResource("2_player")]
+
+[node name="FxLayer" type="Node2D" parent="."]
+z_index = 20
+script = ExtResource("3_fx")
+
+[node name="PostProcess" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="Vignette" type="ColorRect" parent="PostProcess"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+material = SubResource("ShaderMaterial_crt")
+
+[node name="HUD" parent="." instance=ExtResource("5_hud")]

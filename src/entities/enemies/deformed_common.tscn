@@ -1,0 +1,24 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/entities/enemies/enemy_base.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/deformed_common_sheet.png" id="2_sheet"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_enemy"]
+radius = 15.0
+
+[node name="DeformedCommon" type="CharacterBody2D"]
+y_sort_enabled = true
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(0, -32)
+scale = Vector2(0.82, 0.82)
+texture = ExtResource("2_sheet")
+hframes = 6
+vframes = 2
+frame = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_enemy")

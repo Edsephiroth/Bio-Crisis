@@ -1,0 +1,12 @@
+class_name WeaponData
+extends Resource
+
+@export var id: String = ""
+@export var display_name: String = ""
+@export var caliber: String = "9mm"
+@export var attack_bonus: int = 15
+@export var range_px: float = 240.0
+@export var rate_of_fire: int = 2
+@export var capacity: int = 15
+@export var icon_path: String = "res://assets/icons/Pe1_icon_inv_pistol.png"
+@export var description: String = ""
