@@ -4,9 +4,9 @@ extends CharacterBody2D
 const WALK_SHEET: Texture2D = preload("res://assets/sprites/elisabeth_sheet.png")
 const RUN_SHEET: Texture2D = preload("res://assets/sprites/elisabeth_run_sheet.png")
 
-@export var walk_speed: float = 165.0
-@export var run_speed: float = 218.0
-@export var dash_speed: float = 470.0
+@export var walk_speed: float = 155.0
+@export var run_speed: float = 225.0
+@export var dash_speed: float = 440.0
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var flashlight: PointLight2D = $Flashlight
@@ -23,7 +23,6 @@ var active_sheet_mode: String = "walk" # "walk", "run"
 var dash_timer: float = 0.0
 var dash_dir: Vector2 = Vector2.DOWN
 var dash_cooldown: float = 0.0
-var afterimages: Array[Dictionary] = []
 
 var shake_intensity: float = 0.0
 var shake_timer: float = 0.0
@@ -48,10 +47,13 @@ func trigger_dash() -> void:
 	if input_vec.length() < 0.05 and GameState.virtual_move_vector.length() > 0.05:
 		input_vec = GameState.virtual_move_vector
 	dash_dir = input_vec.normalized() if input_vec.length() > 0.1 else facing_dir
-	dash_timer = 0.22
+	if absf(dash_dir.x) > absf(dash_dir.y):
+		dir_row = 3 if dash_dir.x > 0.0 else 2
+	else:
+		dir_row = 0 if dash_dir.y > 0.0 else 1
+	dash_timer = 0.24
 	dash_cooldown = 2.0
-	AudioManager.play_sfx("dash", -2.5, 0.06)
-	EventBus.floating_text_requested.emit("DASH!", global_position + Vector2(0, -48), Color(0.35, 0.95, 1.0))
+	AudioManager.play_sfx("dash", -4.0, 0.06)
 
 
 func _on_screen_shake(intensity: float, duration: float) -> void:
@@ -72,12 +74,6 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if dash_cooldown > 0.0 and not GameState.is_world_paused():
 		dash_cooldown = maxf(0.0, dash_cooldown - delta)
-
-	for i in range(afterimages.size() - 1, -1, -1):
-		afterimages[i]["ttl"] = float(afterimages[i]["ttl"]) - delta
-		if float(afterimages[i]["ttl"]) <= 0.0:
-			afterimages.remove_at(i)
-		queue_redraw()
 
 	if shake_timer > 0.0:
 		shake_timer = maxf(0.0, shake_timer - delta)
@@ -112,22 +108,29 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		return
 
+	# Subtle tint only for negative status ailments
+	if GameState.poison_timer > 0.0:
+		sprite.modulate = Color(0.75, 1.15, 0.72, 1.0)
+	elif GameState.stiff_timer > 0.0:
+		sprite.modulate = Color(0.7, 0.8, 1.2, 1.0)
+	else:
+		sprite.modulate = Color.WHITE
+
+	# Realistic evade/sprint burst: faster run animation frames, no supernatural VFX
 	if dash_timer > 0.0:
 		dash_timer -= delta
 		velocity = dash_dir * dash_speed
 		move_and_slide()
 		_set_sheet_mode("run")
-		sprite.modulate = Color(0.55, 0.95, 1.25, 0.85)
-		afterimages.append({"pos": Vector2.ZERO, "world_pos": global_position, "ttl": 0.16})
-		queue_redraw()
+		sprite.scale = Vector2(0.76, 0.76)
+		sprite.position = Vector2(0, -34)
+		anim_timer += delta * 24.0
+		if anim_timer >= 1.0:
+			anim_timer -= 1.0
+			anim_frame = (anim_frame + 1) % 8
+		sprite.frame = dir_row * 8 + anim_frame
+		flashlight.position = Vector2(0, -18) + dash_dir * 34.0
 		return
-	else:
-		if GameState.poison_timer > 0.0:
-			sprite.modulate = Color(0.75, 1.15, 0.72, 1.0)
-		elif GameState.stiff_timer > 0.0:
-			sprite.modulate = Color(0.7, 0.8, 1.2, 1.0)
-		else:
-			sprite.modulate = Color.WHITE
 
 	var input_vec: Vector2 = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var using_joy: bool = false
@@ -139,10 +142,10 @@ func _physics_process(delta: float) -> void:
 	if raw_len > 1.0:
 		input_vec = input_vec.normalized()
 
-	var enemies_present: bool = not get_tree().get_nodes_in_group("enemies").is_empty()
-	var is_running: bool = enemies_present or (not using_joy) or raw_len > 0.65
+	# Hold Shift on PC (or push virtual joystick > 75% on mobile) to run; otherwise walk
+	var is_running: bool = (raw_len > 0.75) if using_joy else Input.is_action_pressed("run")
 
-	var speed_mult: float = 1.40 if GameState.haste_timer > 0.0 else 1.0
+	var speed_mult: float = 1.35 if GameState.haste_timer > 0.0 else 1.0
 	if GameState.stiff_timer > 0.0:
 		speed_mult *= 0.55
 
@@ -188,13 +191,7 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, 16.0, Color(0.0, 0.0, 0.0, 0.45))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	# Dash cyan afterimage trails
-	for ai in afterimages:
-		var rel: Vector2 = (ai["world_pos"] as Vector2) - global_position
-		var a: float = clampf(float(ai["ttl"]) / 0.16, 0.0, 1.0) * 0.45
-		draw_circle(rel + Vector2(0, -24), 16.0, Color(0.2, 0.9, 1.0, a))
-
-	# Parasite Eve style tactical targeting dome when paused
+	# Tactical targeting range dome when paused
 	if GameState.is_tactical_paused:
 		var r: float = GameState.get_current_range_px()
 		var is_energy: bool = GameState.tactical_action_mode == "energy_shot"

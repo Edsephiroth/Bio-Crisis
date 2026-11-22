@@ -91,6 +91,6 @@ text = "NOVA MISSÃO"
 layout_mode = 2
 modulate = Color(0.82, 0.88, 0.94, 0.9)
 theme_override_font_sizes/font_size = 12
-text = "Celular: Joystick Virtual + Botão TÁTICO (ATB) + INTERAGIR + MENU
-PC: WASD | Espaço: Tático | F: Interagir | E: Energy Shot | Q: Heal | R: Haste"
+text = "Celular: Joystick (suave = andar / borda = correr) + TÁTICO + DASH + MENU
+PC: WASD | Shift: Correr | Ctrl: Esquiva | Espaço: Tático | F: Interagir | C: Recarregar"
 horizontal_alignment = 1
