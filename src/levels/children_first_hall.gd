@@ -145,6 +145,7 @@ func _spawn_enemy(pos: Vector2, is_alpha: bool, idx: int) -> void:
 	var enemy: EnemyBase = ENEMY_SCENE.instantiate() as EnemyBase
 	enemy.global_position = pos
 	if is_alpha:
+		enemy.bestiary_id = "alpha_mutant"
 		enemy.enemy_name = "Alpha Deformed (Organism)"
 		enemy.max_hp = 260
 		enemy.move_speed = 92.0
@@ -313,11 +314,10 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 			hit_enemies[i].take_damage(int(round(base_pwr * mult)), i == 0)
 	else:
 		var weapon: WeaponData = GameState.get_equipped_weapon()
-		if GameState.ammo <= 0:
-			EventBus.toast_message.emit("Sem munição!", Color(1.0, 0.35, 0.35))
+		if GameState.get_current_ammo() <= 0:
+			EventBus.toast_message.emit("Sem munição %s!" % weapon.caliber, Color(1.0, 0.35, 0.35))
 			return
-		var shots: int = mini(weapon.rate_of_fire, GameState.ammo)
-		GameState.ammo -= shots
+		var shots: int = GameState.consume_current_ammo(weapon.rate_of_fire)
 		var crit_chance: float = 0.45 if GameState.level >= 5 else 0.15
 		var is_crit: bool = randf() < crit_chance
 		var per_shot: float = float(GameState.get_total_attack()) * (0.72 if shots > 1 else 1.25)

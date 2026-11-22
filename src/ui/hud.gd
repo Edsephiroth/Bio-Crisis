@@ -23,6 +23,8 @@ extends CanvasLayer
 @onready var btn_cancel: Button = %BtnCancel
 @onready var btn_switch_weapon: Button = %BtnSwitchWeapon
 @onready var btn_mute: Button = %BtnMute
+@onready var btn_menu: Button = %BtnMenu
+@onready var inventory_menu: InventoryMenu = %InventoryMenu
 
 @onready var end_overlay: ColorRect = %EndOverlay
 @onready var end_title: Label = %EndTitle
@@ -48,6 +50,7 @@ func _ready() -> void:
 	btn_cancel.pressed.connect(_on_btn_cancel_pressed)
 	btn_switch_weapon.pressed.connect(func() -> void: GameState.cycle_weapon())
 	btn_mute.pressed.connect(_on_btn_mute_pressed)
+	btn_menu.pressed.connect(func() -> void: inventory_menu.open_menu())
 	btn_restart.pressed.connect(_on_restart_pressed)
 
 	tactical_panel.visible = false
@@ -90,7 +93,7 @@ func _refresh_hud() -> void:
 
 	var weapon: WeaponData = GameState.get_equipped_weapon()
 	weapon_label.text = "%s (%s)" % [weapon.display_name, weapon.caliber]
-	ammo_label.text = "Munição: %d  |  Alcance: %dpx" % [GameState.ammo, int(weapon.range_px)]
+	ammo_label.text = "Mun %s: %d  |  ATK %d" % [weapon.caliber, GameState.get_current_ammo(), GameState.get_total_attack()]
 	if ResourceLoader.exists(weapon.icon_path):
 		weapon_icon.texture = load(weapon.icon_path) as Texture2D
 

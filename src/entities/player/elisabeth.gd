@@ -50,7 +50,7 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if GameState.is_tactical_paused or GameState.is_game_over or GameState.is_victory:
+	if GameState.is_world_paused():
 		velocity = Vector2.ZERO
 		return
 

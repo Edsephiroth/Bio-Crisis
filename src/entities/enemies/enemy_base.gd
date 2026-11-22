@@ -3,6 +3,7 @@ extends CharacterBody2D
 
 enum AIState { IDLE, CHASE, WINDUP, COOLDOWN }
 
+@export var bestiary_id: String = "deformed_common"
 @export var enemy_name: String = "Deformed Attendee"
 @export var max_hp: int = 95
 @export var move_speed: float = 76.0
@@ -60,7 +61,7 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if GameState.is_tactical_paused or GameState.is_game_over or GameState.is_victory:
+	if GameState.is_world_paused():
 		velocity = Vector2.ZERO
 		return
 
@@ -135,6 +136,7 @@ func take_damage(amount: int, is_crit: bool = false) -> void:
 	queue_redraw()
 
 	if hp <= 0:
+		GameState.register_bestiary_kill(bestiary_id)
 		EventBus.enemy_defeated.emit(enemy_name, exp_reward, bp_reward, global_position)
 		GameState.award_exp_and_bp(exp_reward, bp_reward, global_position)
 		queue_free()
