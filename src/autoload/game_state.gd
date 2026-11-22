@@ -754,3 +754,55 @@ func load_game() -> bool:
 
 	EventBus.player_stats_changed.emit()
 	return true
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey:
+		var key_ev: InputEventKey = event as InputEventKey
+		if key_ev.pressed and not key_ev.echo and key_ev.keycode == KEY_F11:
+			toggle_fullscreen()
+
+
+func is_fullscreen() -> bool:
+	if OS.has_feature("web"):
+		return bool(JavaScriptBridge.eval("Boolean(document.fullscreenElement || document.webkitFullscreenElement)", true))
+	var mode: int = DisplayServer.window_get_mode()
+	return mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
+
+
+func toggle_fullscreen() -> bool:
+	var currently_fs: bool = is_fullscreen()
+	if OS.has_feature("web"):
+		if currently_fs:
+			JavaScriptBridge.eval("""
+				(function(){
+					try {
+						if (document.exitFullscreen) { document.exitFullscreen(); }
+						else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+					} catch(e) {}
+				})();
+			""", true)
+			return false
+		else:
+			JavaScriptBridge.eval("""
+				(function(){
+					try {
+						var el = document.documentElement;
+						var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+						if (fn) {
+							var p = fn.call(el, { navigationUI: 'hide' });
+							if (p && p.catch) { p.catch(function(){ try { fn.call(el); } catch(e2) {} }); }
+						}
+						if (screen && screen.orientation && screen.orientation.lock) {
+							screen.orientation.lock('landscape').catch(function(){});
+						}
+					} catch(e) {}
+				})();
+			""", true)
+			return true
+	if currently_fs:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		return false
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	return true
+

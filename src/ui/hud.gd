@@ -23,6 +23,7 @@ extends CanvasLayer
 @onready var btn_cancel: Button = %BtnCancel
 @onready var btn_switch_weapon: Button = %BtnSwitchWeapon
 @onready var btn_mute: Button = %BtnMute
+@onready var btn_fullscreen: Button = %BtnFullscreen
 @onready var btn_menu: Button = %BtnMenu
 @onready var inventory_menu: InventoryMenu = %InventoryMenu
 @onready var boss_bar_panel: PanelContainer = %BossBarPanel
@@ -40,6 +41,7 @@ extends CanvasLayer
 @onready var btn_restart: Button = %BtnRestart
 
 var toast_timer: float = 0.0
+var _fs_sync_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -62,6 +64,7 @@ func _ready() -> void:
 	btn_cancel.pressed.connect(_on_btn_cancel_pressed)
 	btn_switch_weapon.pressed.connect(func() -> void: GameState.cycle_weapon())
 	btn_mute.pressed.connect(_on_btn_mute_pressed)
+	btn_fullscreen.pressed.connect(_on_btn_fullscreen_pressed)
 	btn_menu.pressed.connect(func() -> void: inventory_menu.open_menu())
 	btn_interact.pressed.connect(_on_btn_interact_pressed)
 	btn_dash.pressed.connect(_on_btn_dash_pressed)
@@ -72,6 +75,7 @@ func _ready() -> void:
 	end_overlay.visible = false
 	boss_bar_panel.visible = false
 	btn_interact.visible = false
+	_sync_fullscreen_btn()
 	_refresh_hud()
 
 
@@ -80,6 +84,10 @@ func _process(delta: float) -> void:
 		toast_timer -= delta
 		if toast_timer <= 0.0:
 			toast_label.text = ""
+	_fs_sync_timer += delta
+	if _fs_sync_timer >= 0.4:
+		_fs_sync_timer = 0.0
+		_sync_fullscreen_btn()
 	var lvl: ChildrenFirstHall = _get_level()
 	if lvl != null and lvl.player != null:
 		var cd: float = lvl.player.dash_cooldown
@@ -258,6 +266,15 @@ func _on_btn_boss_part_pressed() -> void:
 func _on_btn_mute_pressed() -> void:
 	var muted: bool = AudioManager.toggle_mute()
 	btn_mute.text = "Som: OFF" if muted else "Som: ON"
+
+
+func _sync_fullscreen_btn() -> void:
+	btn_fullscreen.text = "[X]" if GameState.is_fullscreen() else "[ ]"
+
+
+func _on_btn_fullscreen_pressed() -> void:
+	GameState.toggle_fullscreen()
+	_sync_fullscreen_btn()
 
 
 func _on_restart_pressed() -> void:
