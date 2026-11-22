@@ -28,9 +28,16 @@ var haste_timer: float = 0.0
 var in_safe_room: bool = false
 var is_tactical_paused: bool = false
 var is_menu_open: bool = false
+var is_dialogue_open: bool = false
 var tactical_action_mode: String = "attack"
 var is_game_over: bool = false
 var is_victory: bool = false
+
+var current_room_id: String = "gala_hall"
+var has_keycard: bool = false
+var collected_pickups: Dictionary = {}
+var defeated_enemy_keys: Dictionary = {}
+var seen_dialogues: Dictionary = {}
 
 var virtual_move_vector: Vector2 = Vector2.ZERO
 
@@ -80,15 +87,21 @@ func reset_run() -> void:
 	in_safe_room = false
 	is_tactical_paused = false
 	is_menu_open = false
+	is_dialogue_open = false
 	tactical_action_mode = "attack"
 	is_game_over = false
 	is_victory = false
+	current_room_id = "gala_hall"
+	has_keycard = false
+	collected_pickups = {}
+	defeated_enemy_keys = {}
+	seen_dialogues = {}
 	virtual_move_vector = Vector2.ZERO
 	EventBus.player_stats_changed.emit()
 
 
 func is_world_paused() -> bool:
-	return is_tactical_paused or is_menu_open or is_game_over or is_victory
+	return is_tactical_paused or is_menu_open or is_dialogue_open or is_game_over or is_victory
 
 
 func get_equipped_weapon() -> WeaponData:
@@ -317,8 +330,8 @@ func award_exp_and_bp(exp_gain: int, bp_gain: int, world_pos: Vector2) -> void:
 
 
 func set_tactical_pause(active: bool, mode_type: String = "attack") -> void:
-	if active and (not is_atb_ready() or is_menu_open):
-		if not is_menu_open:
+	if active and (not is_atb_ready() or is_menu_open or is_dialogue_open):
+		if not is_menu_open and not is_dialogue_open:
 			EventBus.toast_message.emit("Barra ATB carregando...", Color(1.0, 0.7, 0.3))
 		return
 	is_tactical_paused = active
@@ -329,6 +342,14 @@ func set_tactical_pause(active: bool, mode_type: String = "attack") -> void:
 
 func set_menu_open(open: bool) -> void:
 	is_menu_open = open
+	if open and is_tactical_paused:
+		is_tactical_paused = false
+		EventBus.tactical_mode_changed.emit(false, "attack")
+	EventBus.player_stats_changed.emit()
+
+
+func set_dialogue_open(open: bool) -> void:
+	is_dialogue_open = open
 	if open and is_tactical_paused:
 		is_tactical_paused = false
 		EventBus.tactical_mode_changed.emit(false, "attack")

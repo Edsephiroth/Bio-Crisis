@@ -1,0 +1,73 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/dialogue_box.gd" id="1_script"]
+
+[node name="DialogueBox" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Dimmer" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.01, 0.02, 0.04, 0.45)
+
+[node name="BoxPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -176.0
+offset_right = -24.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="HBox" type="HBoxContainer" parent="BoxPanel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="BustRect" type="TextureRect" parent="BoxPanel/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(126, 136)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TextVBox" type="VBoxContainer" parent="BoxPanel/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="SpeakerLabel" type="Label" parent="BoxPanel/HBox/TextVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+modulate = Color(0.45, 0.92, 1, 1)
+theme_override_font_sizes/font_size = 15
+text = "Elisabeth Shelley"
+
+[node name="BodyLabel" type="Label" parent="BoxPanel/HBox/TextVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 14
+text = ""
+autowrap_mode = 3
+
+[node name="BtnNext" type="Button" parent="BoxPanel/HBox/TextVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 38)
+layout_mode = 2
+size_flags_horizontal = 8
+theme_override_font_sizes/font_size = 13
+text = "CONTINUAR ▶"

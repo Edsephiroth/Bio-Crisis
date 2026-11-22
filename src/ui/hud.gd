@@ -25,6 +25,10 @@ extends CanvasLayer
 @onready var btn_mute: Button = %BtnMute
 @onready var btn_menu: Button = %BtnMenu
 @onready var inventory_menu: InventoryMenu = %InventoryMenu
+@onready var boss_bar_panel: PanelContainer = %BossBarPanel
+@onready var boss_name_label: Label = %BossNameLabel
+@onready var boss_hp_bar: ProgressBar = %BossHpBar
+@onready var btn_interact: Button = %BtnInteract
 
 @onready var end_overlay: ColorRect = %EndOverlay
 @onready var end_title: Label = %EndTitle
@@ -39,6 +43,8 @@ func _ready() -> void:
 	EventBus.tactical_mode_changed.connect(_on_tactical_changed)
 	EventBus.toast_message.connect(_on_toast)
 	EventBus.enemy_defeated.connect(_on_enemy_defeated)
+	EventBus.interaction_prompt_changed.connect(_on_interaction_prompt_changed)
+	EventBus.boss_status_changed.connect(_on_boss_status_changed)
 	EventBus.game_over_triggered.connect(_on_game_over)
 	EventBus.victory_triggered.connect(_on_victory)
 
@@ -51,10 +57,13 @@ func _ready() -> void:
 	btn_switch_weapon.pressed.connect(func() -> void: GameState.cycle_weapon())
 	btn_mute.pressed.connect(_on_btn_mute_pressed)
 	btn_menu.pressed.connect(func() -> void: inventory_menu.open_menu())
+	btn_interact.pressed.connect(_on_btn_interact_pressed)
 	btn_restart.pressed.connect(_on_restart_pressed)
 
 	tactical_panel.visible = false
 	end_overlay.visible = false
+	boss_bar_panel.visible = false
+	btn_interact.visible = false
 	_refresh_hud()
 
 
@@ -87,6 +96,8 @@ func _refresh_hud() -> void:
 	var badges: PackedStringArray = PackedStringArray()
 	if GameState.in_safe_room:
 		badges.append("SAFE ROOM")
+	if GameState.has_keycard:
+		badges.append("KEYCARD")
 	if GameState.haste_timer > 0.0:
 		badges.append("HASTE %ds" % int(ceil(GameState.haste_timer)))
 	status_badge.text = "  •  ".join(badges)
@@ -170,9 +181,31 @@ func _on_game_over() -> void:
 
 func _on_victory() -> void:
 	end_overlay.visible = true
-	end_title.text = "SALÃO DE GALA LIMPO!"
+	end_title.text = "PRÓLOGO CONCLUÍDO!"
 	end_title.modulate = Color(0.35, 1.0, 0.65)
-	end_subtitle.text = "Vertical Slice concluído — LV.%d | %d BP acumulados." % [GameState.level, GameState.bp]
+	end_subtitle.text = "Elisabeth escapou da ONG Children First! LV.%d | %d BP acumulados." % [GameState.level, GameState.bp]
+
+
+func _on_interaction_prompt_changed(is_visible: bool, label: String) -> void:
+	btn_interact.visible = is_visible
+	if is_visible:
+		btn_interact.text = label
+
+
+func _on_boss_status_changed(active: bool, b_name: String, b_hp: int, b_max_hp: int, phase: int) -> void:
+	boss_bar_panel.visible = active
+	if active:
+		var phase_tag: String = "  [FASE 2 — FÚRIA]" if phase >= 2 else ""
+		boss_name_label.text = "%s%s  (%d / %d)" % [b_name, phase_tag, b_hp, b_max_hp]
+		boss_hp_bar.max_value = b_max_hp
+		boss_hp_bar.value = b_hp
+		boss_hp_bar.modulate = Color(1.0, 0.15, 0.45) if phase >= 2 else Color(0.95, 0.2, 0.28)
+
+
+func _on_btn_interact_pressed() -> void:
+	var lvl: ChildrenFirstHall = _get_level()
+	if lvl != null:
+		lvl.trigger_interact()
 
 
 func _on_btn_mute_pressed() -> void:
