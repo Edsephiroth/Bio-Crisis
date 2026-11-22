@@ -1,6 +1,8 @@
 extends Node
 
-## Global state manager for Elisabeth Shelley (ATB, PE, Inventory, Armors, Ammo by Caliber, Tune, Bestiary).
+## Global state manager for Elisabeth Shelley (ATB, PE, Inventory, Tune, Status Timers, Save/Load).
+
+const SAVE_PATH: String = "user://bio_crisis_save_1.json"
 
 var level: int = 1
 var exp: int = 0
@@ -13,6 +15,7 @@ var atb: float = 0.0
 var atb_rate: float = 34.0
 var base_attack: int = 25
 var bp: int = 0
+var play_time_seconds: float = 0.0
 
 var medkits: int = 3
 var pe_lights: int = 2
@@ -25,6 +28,9 @@ var ammo_by_caliber: Dictionary = {
 }
 
 var haste_timer: float = 0.0
+var barrier_timer: float = 0.0
+var slow_timer: float = 0.0
+
 var in_safe_room: bool = false
 var is_tactical_paused: bool = false
 var is_menu_open: bool = false
@@ -32,8 +38,11 @@ var is_dialogue_open: bool = false
 var tactical_action_mode: String = "attack"
 var is_game_over: bool = false
 var is_victory: bool = false
+var crt_enabled: bool = true
 
 var current_room_id: String = "gala_hall"
+var saved_player_pos: Vector2 = Vector2(-1, -1)
+var pending_load_from_save: bool = false
 var has_keycard: bool = false
 var collected_pickups: Dictionary = {}
 var defeated_enemy_keys: Dictionary = {}
@@ -73,6 +82,7 @@ func reset_run() -> void:
 	atb = 100.0
 	base_attack = 25
 	bp = 0
+	play_time_seconds = 0.0
 	medkits = 3
 	pe_lights = 2
 	tools = 2
@@ -84,6 +94,8 @@ func reset_run() -> void:
 	bestiary_kills = {}
 
 	haste_timer = 0.0
+	barrier_timer = 0.0
+	slow_timer = 0.0
 	in_safe_room = false
 	is_tactical_paused = false
 	is_menu_open = false
@@ -92,6 +104,7 @@ func reset_run() -> void:
 	is_game_over = false
 	is_victory = false
 	current_room_id = "gala_hall"
+	saved_player_pos = Vector2(-1, -1)
 	has_keycard = false
 	collected_pickups = {}
 	defeated_enemy_keys = {}
@@ -239,7 +252,18 @@ func get_hp_for_level(lvl: int) -> int:
 	return int(floor(445.0 + (9999.0 - 445.0) * pow(float(lvl - 1) / 98.0, 1.1)))
 
 
+func get_formatted_play_time() -> String:
+	var total: int = int(play_time_seconds)
+	var hrs: int = total / 3600
+	var mins: int = (total % 3600) / 60
+	var secs: int = total % 60
+	return "%02d:%02d:%02d" % [hrs, mins, secs]
+
+
 func tick_realtime(delta: float) -> void:
+	if not is_game_over and not is_victory:
+		play_time_seconds += delta
+
 	if is_world_paused():
 		return
 
@@ -247,6 +271,14 @@ func tick_realtime(delta: float) -> void:
 
 	if haste_timer > 0.0:
 		haste_timer = maxf(0.0, haste_timer - delta)
+		changed = true
+
+	if barrier_timer > 0.0:
+		barrier_timer = maxf(0.0, barrier_timer - delta)
+		changed = true
+
+	if slow_timer > 0.0:
+		slow_timer = maxf(0.0, slow_timer - delta)
 		changed = true
 
 	var atb_mult: float = 2.0 if haste_timer > 0.0 else 1.0
@@ -285,6 +317,8 @@ func apply_damage(amount: int, world_pos: Vector2) -> void:
 	var mitigated: int = maxi(8, amount - int(floor(float(get_total_defense()) * 0.55)))
 	if level >= 4:
 		mitigated = int(round(float(mitigated) * 0.75))
+	if barrier_timer > 0.0:
+		mitigated = int(round(float(mitigated) * 0.65))
 
 	hp = maxi(0, hp - mitigated)
 	AudioManager.play_sfx("player_hurt", -2.0, 0.05)
@@ -354,3 +388,141 @@ func set_dialogue_open(open: bool) -> void:
 		is_tactical_paused = false
 		EventBus.tactical_mode_changed.emit(false, "attack")
 	EventBus.player_stats_changed.emit()
+
+
+# --- SAVE / LOAD SYSTEM (persists on desktop & mobile Web IndexedDB) ---
+
+func has_save_file() -> bool:
+	return FileAccess.file_exists(SAVE_PATH)
+
+
+func save_game(player_world_pos: Vector2 = Vector2(-1, -1)) -> bool:
+	var serialized_weapons: Array = []
+	for w in weapons:
+		serialized_weapons.append({
+			"id": w.id,
+			"display_name": w.display_name,
+			"caliber": w.caliber,
+			"attack_bonus": w.attack_bonus,
+			"range_px": w.range_px,
+			"rate_of_fire": w.rate_of_fire,
+			"capacity": w.capacity,
+			"icon_path": w.icon_path,
+			"description": w.description,
+		})
+
+	var room_data: Dictionary = RoomDatabase.get_room(current_room_id)
+	var payload: Dictionary = {
+		"version": 1,
+		"timestamp": Time.get_datetime_string_from_system(false, true),
+		"room_id": current_room_id,
+		"room_title": str(room_data.get("title", current_room_id)),
+		"player_x": player_world_pos.x,
+		"player_y": player_world_pos.y,
+		"level": level,
+		"exp": exp,
+		"exp_to_next": exp_to_next,
+		"hp": hp,
+		"max_hp": max_hp,
+		"pe": pe,
+		"max_pe": max_pe,
+		"base_attack": base_attack,
+		"bp": bp,
+		"play_time_seconds": play_time_seconds,
+		"medkits": medkits,
+		"pe_lights": pe_lights,
+		"tools": tools,
+		"ammo_by_caliber": ammo_by_caliber,
+		"weapons": serialized_weapons,
+		"equipped_weapon_index": equipped_weapon_index,
+		"equipped_armor_index": equipped_armor_index,
+		"has_keycard": has_keycard,
+		"collected_pickups": collected_pickups,
+		"defeated_enemy_keys": defeated_enemy_keys,
+		"seen_dialogues": seen_dialogues,
+		"bestiary_kills": bestiary_kills,
+	}
+
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_string(JSON.stringify(payload, "\t"))
+	f.close()
+	AudioManager.play_sfx("heal", -3.0, 0.0)
+	EventBus.toast_message.emit("Progresso salvo no Terminal de Segurança!", Color(0.35, 1.0, 0.7))
+	return true
+
+
+func get_save_summary() -> Dictionary:
+	if not has_save_file():
+		return {}
+	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if f == null:
+		return {}
+	var text: String = f.get_as_text()
+	f.close()
+	var parsed: Variant = JSON.parse_string(text)
+	if parsed is Dictionary:
+		return parsed as Dictionary
+	return {}
+
+
+func load_game() -> bool:
+	var data: Dictionary = get_save_summary()
+	if data.is_empty():
+		return false
+
+	reset_run()
+	level = int(data.get("level", 1))
+	exp = int(data.get("exp", 0))
+	exp_to_next = int(data.get("exp_to_next", get_exp_for_next_level(level)))
+	max_hp = int(data.get("max_hp", 445))
+	hp = clampi(int(data.get("hp", max_hp)), 1, max_hp)
+	max_pe = float(data.get("max_pe", 100.0))
+	pe = clampf(float(data.get("pe", max_pe)), 0.0, max_pe)
+	base_attack = int(data.get("base_attack", 25))
+	bp = int(data.get("bp", 0))
+	play_time_seconds = float(data.get("play_time_seconds", 0.0))
+	medkits = int(data.get("medkits", 3))
+	pe_lights = int(data.get("pe_lights", 2))
+	tools = int(data.get("tools", 2))
+
+	if data.get("ammo_by_caliber") is Dictionary:
+		ammo_by_caliber = (data["ammo_by_caliber"] as Dictionary).duplicate()
+
+	if data.get("weapons") is Array:
+		var loaded_weapons: Array[WeaponData] = []
+		for wd in (data["weapons"] as Array):
+			if wd is Dictionary:
+				var d: Dictionary = wd as Dictionary
+				var w := WeaponData.new()
+				w.id = str(d.get("id", "m93r"))
+				w.display_name = str(d.get("display_name", "M93R"))
+				w.caliber = str(d.get("caliber", "9mm"))
+				w.attack_bonus = int(d.get("attack_bonus", 15))
+				w.range_px = float(d.get("range_px", 230.0))
+				w.rate_of_fire = int(d.get("rate_of_fire", 2))
+				w.capacity = int(d.get("capacity", 15))
+				w.icon_path = str(d.get("icon_path", "res://assets/icons/Pe1_icon_inv_pistol.png"))
+				w.description = str(d.get("description", ""))
+				loaded_weapons.append(w)
+		if not loaded_weapons.is_empty():
+			weapons = loaded_weapons
+
+	equipped_weapon_index = clampi(int(data.get("equipped_weapon_index", 0)), 0, maxi(0, weapons.size() - 1))
+	equipped_armor_index = clampi(int(data.get("equipped_armor_index", 0)), 0, maxi(0, armors.size() - 1))
+	current_room_id = str(data.get("room_id", "gala_hall"))
+	saved_player_pos = Vector2(float(data.get("player_x", -1.0)), float(data.get("player_y", -1.0)))
+	has_keycard = bool(data.get("has_keycard", false))
+
+	if data.get("collected_pickups") is Dictionary:
+		collected_pickups = (data["collected_pickups"] as Dictionary).duplicate()
+	if data.get("defeated_enemy_keys") is Dictionary:
+		defeated_enemy_keys = (data["defeated_enemy_keys"] as Dictionary).duplicate()
+	if data.get("seen_dialogues") is Dictionary:
+		seen_dialogues = (data["seen_dialogues"] as Dictionary).duplicate()
+	if data.get("bestiary_kills") is Dictionary:
+		bestiary_kills = (data["bestiary_kills"] as Dictionary).duplicate()
+
+	EventBus.player_stats_changed.emit()
+	return true

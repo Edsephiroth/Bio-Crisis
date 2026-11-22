@@ -50,6 +50,8 @@ func _process(delta: float) -> void:
 		sprite.modulate = Color(2.4, 1.4, 1.4, 1.0)
 	elif state == AIState.WINDUP or state == AIState.SHOCKWAVE_WINDUP:
 		sprite.modulate = Color(1.65, 0.45, 0.45, 1.0)
+	elif GameState.slow_timer > 0.0:
+		sprite.modulate = Color(0.55, 0.78, 1.35, 1.0)
 	elif is_boss and boss_phase == 2:
 		sprite.modulate = Color(1.25, 0.8, 0.95, 1.0)
 	else:
@@ -117,6 +119,8 @@ func _physics_process(delta: float) -> void:
 				dir = dir.normalized()
 
 				var spd: float = move_speed * (1.28 if (is_boss and boss_phase == 2) else 1.0)
+				if GameState.slow_timer > 0.0:
+					spd *= 0.5
 				velocity = dir * spd
 				move_and_slide()
 				dir_row = 1 if dir.y < -0.2 else 0

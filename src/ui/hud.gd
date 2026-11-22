@@ -100,6 +100,10 @@ func _refresh_hud() -> void:
 		badges.append("KEYCARD")
 	if GameState.haste_timer > 0.0:
 		badges.append("HASTE %ds" % int(ceil(GameState.haste_timer)))
+	if GameState.barrier_timer > 0.0:
+		badges.append("BARRIER %ds" % int(ceil(GameState.barrier_timer)))
+	if GameState.slow_timer > 0.0:
+		badges.append("SLOW %ds" % int(ceil(GameState.slow_timer)))
 	status_badge.text = "  •  ".join(badges)
 
 	var weapon: WeaponData = GameState.get_equipped_weapon()

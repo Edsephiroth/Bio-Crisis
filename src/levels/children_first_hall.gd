@@ -15,6 +15,7 @@ const ENEMY_SCENE: PackedScene = preload("res://src/entities/enemies/deformed_co
 @onready var walls_body: StaticBody2D = $WallsBody
 @onready var nav_region: NavigationRegion2D = $NavigationRegion2D
 @onready var occluders_root: Node2D = $Occluders
+@onready var vignette_rect: ColorRect = $PostProcess/Vignette
 
 var current_room: Dictionary = {}
 var layout_rows: Array = []
@@ -37,13 +38,27 @@ var pending_victory_after_dialogue: bool = false
 
 
 func _ready() -> void:
-	GameState.reset_run()
+	var loaded_from_save: bool = false
+	if GameState.pending_load_from_save:
+		GameState.pending_load_from_save = false
+		loaded_from_save = GameState.load_game()
+	if not loaded_from_save:
+		GameState.reset_run()
+
 	AudioManager.start_ambient_bgm()
 	EventBus.enemy_defeated.connect(_on_enemy_defeated)
 	EventBus.floating_text_requested.connect(_on_floating_text)
 	EventBus.weapon_fired.connect(_on_weapon_fired)
 	EventBus.dialogue_finished.connect(_on_dialogue_finished)
-	load_room("gala_hall", Vector2(-1, -1))
+
+	if loaded_from_save:
+		var spawn_t: Vector2 = Vector2(-1, -1)
+		if GameState.saved_player_pos.x > 0.0:
+			spawn_t = GameState.saved_player_pos / float(TILE_SIZE)
+		load_room(GameState.current_room_id, spawn_t)
+		EventBus.toast_message.emit("Jogo carregado com sucesso!", Color(0.4, 1.0, 0.72))
+	else:
+		load_room("gala_hall", Vector2(-1, -1))
 
 
 func load_room(room_id: String, custom_spawn_tile: Vector2) -> void:
@@ -304,7 +319,11 @@ func trigger_interact() -> void:
 	if itype == "pickup":
 		var pid: String = str(data["id"])
 		var kind: String = str(data.get("kind", "supply"))
-		if kind == "dialogue":
+		if kind == "save_terminal":
+			GameState.save_game(player.global_position)
+			EventBus.floating_text_requested.emit("JOGO SALVO!", player.global_position + Vector2(0, -56), Color(0.35, 1.0, 0.8))
+			return
+		elif kind == "dialogue":
 			GameState.collected_pickups[pid] = true
 			active_pickups.erase(data)
 			AudioManager.play_sfx("atb_ready", -4.0, 0.02)
@@ -514,6 +533,80 @@ func cast_haste() -> void:
 	EventBus.floating_text_requested.emit("HASTE!", player.global_position + Vector2(0, -54), Color(0.4, 0.95, 1.0))
 	EventBus.toast_message.emit("HASTE ativo: ATB e velocidade aumentados!", Color(0.4, 0.95, 1.0))
 	GameState.set_tactical_pause(false)
+
+
+func cast_barrier() -> void:
+	if GameState.pe < 35.0:
+		EventBus.toast_message.emit("PE insuficiente para BARRIER (35 PE).", Color(1.0, 0.5, 0.5))
+		return
+	GameState.pe -= 35.0
+	AudioManager.play_sfx("heal", -3.0, 0.06)
+	GameState.barrier_timer = 20.0
+	EventBus.floating_text_requested.emit("BARRIER (-35% DANO)", player.global_position + Vector2(0, -54), Color(0.35, 0.95, 0.85))
+	EventBus.toast_message.emit("BARRIER ativo: -35% de dano recebido por 20s!", Color(0.35, 0.95, 0.85))
+	GameState.set_tactical_pause(false)
+
+
+func cast_slow() -> void:
+	if GameState.pe < 30.0:
+		EventBus.toast_message.emit("PE insuficiente para SLOW (30 PE).", Color(1.0, 0.5, 0.5))
+		return
+	GameState.pe -= 30.0
+	AudioManager.play_sfx("tactical_open", -2.5, 0.08)
+	GameState.slow_timer = 14.0
+	EventBus.floating_text_requested.emit("SLOW!", player.global_position + Vector2(0, -54), Color(0.55, 0.78, 1.0))
+	EventBus.toast_message.emit("SLOW ativo: inimigos 50% mais lentos por 14s!", Color(0.55, 0.78, 1.0))
+	GameState.set_tactical_pause(false)
+
+
+func cast_scan() -> void:
+	if GameState.pe < 15.0:
+		EventBus.toast_message.emit("PE insuficiente para SCAN (15 PE).", Color(1.0, 0.5, 0.5))
+		return
+	var target: EnemyBase = get_nearest_enemy_in_range()
+	if target == null:
+		var all_en: Array[Node] = get_tree().get_nodes_in_group("enemies")
+		if not all_en.is_empty():
+			target = all_en[0] as EnemyBase
+	if target == null:
+		EventBus.toast_message.emit("Nenhuma ameaça detectada nesta sala.", Color(0.7, 0.85, 1.0))
+		return
+	GameState.pe -= 15.0
+	AudioManager.play_sfx("atb_ready", -3.0, 0.0)
+	EventBus.floating_text_requested.emit("SCAN: %d/%d HP" % [target.hp, target.max_hp], target.global_position + Vector2(0, -64), Color(0.45, 0.95, 1.0))
+	EventBus.toast_message.emit("SCAN — %s | HP: %d/%d | ATK: %d" % [target.enemy_name, target.hp, target.max_hp, target.attack_damage], Color(0.45, 0.95, 1.0))
+	GameState.set_tactical_pause(false)
+
+
+func cast_liberate() -> void:
+	if GameState.pe < 80.0:
+		EventBus.toast_message.emit("PE insuficiente para LIBERATE (80 PE).", Color(1.0, 0.5, 0.5))
+		return
+	var max_r: float = GameState.get_current_range_px() + 110.0
+	var targets: Array[EnemyBase] = []
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var en: EnemyBase = node as EnemyBase
+		if en != null and player.global_position.distance_to(en.global_position) <= max_r:
+			targets.append(en)
+	if targets.is_empty():
+		EventBus.toast_message.emit("Nenhum alvo próximo para LIBERATE!", Color(1.0, 0.7, 0.3))
+		return
+	GameState.pe -= 80.0
+	AudioManager.play_sfx("energy_shot", -0.5, 0.05)
+	EventBus.screen_shake_requested.emit(10.0, 0.4)
+	EventBus.floating_text_requested.emit("LIBERATE!!", player.global_position + Vector2(0, -64), Color(1.0, 0.45, 1.0))
+	var dmg: int = int(round(float(GameState.get_total_attack()) * 3.1))
+	for en in targets:
+		EventBus.weapon_fired.emit(player.global_position + Vector2(0, -24), en.global_position + Vector2(0, -24), true)
+		en.take_damage(dmg, true)
+	GameState.consume_atb()
+	GameState.set_tactical_pause(false)
+
+
+func set_crt_visible(enabled: bool) -> void:
+	GameState.crt_enabled = enabled
+	if vignette_rect != null:
+		vignette_rect.visible = enabled
 
 
 func _on_weapon_fired(from_pos: Vector2, to_pos: Vector2, is_energy_shot: bool) -> void:

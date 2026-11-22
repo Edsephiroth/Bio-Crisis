@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/inventory_menu.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/ui/menu_bg.webp" id="2_bg"]
 
 [node name="InventoryMenu" type="Control"]
 layout_mode = 3
@@ -11,6 +12,17 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
+[node name="MenuBackground" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_bg")
+expand_mode = 1
+stretch_mode = 6
+
 [node name="Backdrop" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -18,66 +30,87 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.02, 0.04, 0.07, 0.88)
+color = Color(0.02, 0.05, 0.1, 0.78)
 
 [node name="MainPanel" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = 18.0
-offset_right = -24.0
-offset_bottom = -18.0
+offset_left = 18.0
+offset_top = 14.0
+offset_right = -18.0
+offset_bottom = -14.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="VBox" type="VBoxContainer" parent="MainPanel"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 7
 
 [node name="HeaderRow" type="HBoxContainer" parent="MainPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
-[node name="TabWeapons" type="Button" parent="MainPanel/VBox/HeaderRow"]
+[node name="TabInventory" type="Button" parent="MainPanel/VBox/HeaderRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "ARMAS & TUNE"
+theme_override_font_sizes/font_size = 12
+text = "INVENTÁRIO"
 
-[node name="TabItems" type="Button" parent="MainPanel/VBox/HeaderRow"]
+[node name="TabMap" type="Button" parent="MainPanel/VBox/HeaderRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "EQUIP & ITENS"
+theme_override_font_sizes/font_size = 12
+text = "MAPA"
 
-[node name="TabDocs" type="Button" parent="MainPanel/VBox/HeaderRow"]
+[node name="TabPE" type="Button" parent="MainPanel/VBox/HeaderRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "DOCUMENTOS"
+theme_override_font_sizes/font_size = 12
+text = "ENERGIA PE"
 
-[node name="TabBestiary" type="Button" parent="MainPanel/VBox/HeaderRow"]
+[node name="TabStatus" type="Button" parent="MainPanel/VBox/HeaderRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "BESTIÁRIO"
+theme_override_font_sizes/font_size = 12
+text = "STATUS"
+
+[node name="TabExtras" type="Button" parent="MainPanel/VBox/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "EXTRAS"
+
+[node name="TabSettings" type="Button" parent="MainPanel/VBox/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "CONFIG"
 
 [node name="BtnClose" type="Button" parent="MainPanel/VBox/HeaderRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(96, 38)
+custom_minimum_size = Vector2(80, 38)
 layout_mode = 2
+theme_override_font_sizes/font_size = 12
 text = "FECHAR"
 
 [node name="StatusSummary" type="Label" parent="MainPanel/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-modulate = Color(0.65, 0.9, 1, 1)
+modulate = Color(0.55, 0.92, 1, 1)
 theme_override_font_sizes/font_size = 12
 text = "ELISABETH LV.1"
 

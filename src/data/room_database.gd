@@ -58,6 +58,13 @@ static func _gala_hall_room() -> Dictionary:
 		],
 		"pickups": [
 			{
+				"id": "gala_save_terminal",
+				"tile": Vector2(2.2, 13.5),
+				"kind": "save_terminal",
+				"label": "Terminal de Save (Salvar Jogo)",
+				"color": Color(0.25, 0.85, 1.0),
+			},
+			{
 				"id": "gala_note",
 				"tile": Vector2(12.5, 12.5),
 				"kind": "dialogue",
