@@ -16,13 +16,18 @@ const SFX_PATHS: Dictionary = {
 	"enemy_die": "res://assets/audio/sfx_enemy_die.wav",
 	"step": "res://assets/audio/sfx_step.wav",
 	"level_up": "res://assets/audio/sfx_level_up.wav",
+	"dash": "res://assets/audio/sfx_dash.wav",
+	"reload": "res://assets/audio/sfx_reload.wav",
 }
 
 const BGM_AMBIENT_PATH: String = "res://assets/audio/bgm_gala_ambient.wav"
+const BGM_COMBAT_PATH: String = "res://assets/audio/bgm_combat_theme.wav"
 const POOL_SIZE: int = 10
 
 var sfx_streams: Dictionary = {}
 var bgm_ambient: AudioStream = null
+var bgm_combat: AudioStream = null
+var in_combat_bgm: bool = false
 var sfx_pool: Array[AudioStreamPlayer] = []
 var bgm_player: AudioStreamPlayer
 var is_muted: bool = false
@@ -37,6 +42,8 @@ func _ready() -> void:
 
 	if ResourceLoader.exists(BGM_AMBIENT_PATH):
 		bgm_ambient = load(BGM_AMBIENT_PATH) as AudioStream
+	if ResourceLoader.exists(BGM_COMBAT_PATH):
+		bgm_combat = load(BGM_COMBAT_PATH) as AudioStream
 
 	for i in range(POOL_SIZE):
 		var player := AudioStreamPlayer.new()
@@ -54,11 +61,22 @@ func _ready() -> void:
 
 
 func start_ambient_bgm() -> void:
-	if bgm_player == null or bgm_ambient == null:
+	set_combat_music(false)
+
+
+func set_combat_music(combat_active: bool) -> void:
+	if bgm_player == null:
 		return
-	if bgm_player.stream != bgm_ambient:
-		bgm_player.stream = bgm_ambient
-	if not bgm_player.playing and not is_muted:
+	var target: AudioStream = bgm_combat if (combat_active and bgm_combat != null) else bgm_ambient
+	if target == null:
+		return
+	in_combat_bgm = combat_active
+	if bgm_player.stream != target:
+		bgm_player.stream = target
+		bgm_player.volume_db = -12.0 if combat_active else -14.0
+		if not is_muted:
+			bgm_player.play()
+	elif not bgm_player.playing and not is_muted:
 		bgm_player.play()
 
 

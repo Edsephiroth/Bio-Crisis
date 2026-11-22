@@ -33,6 +33,7 @@ var nearby_interactable: Dictionary = {}
 
 var tracer_lines: Array[Dictionary] = []
 var floating_texts: Array[Dictionary] = []
+var enemy_projectiles: Array[Dictionary] = []
 var emergency_time: float = 0.0
 var pending_victory_after_dialogue: bool = false
 
@@ -49,6 +50,7 @@ func _ready() -> void:
 	EventBus.enemy_defeated.connect(_on_enemy_defeated)
 	EventBus.floating_text_requested.connect(_on_floating_text)
 	EventBus.weapon_fired.connect(_on_weapon_fired)
+	EventBus.enemy_projectile_spawned.connect(_on_enemy_projectile_spawned)
 	EventBus.dialogue_finished.connect(_on_dialogue_finished)
 
 	if loaded_from_save:
@@ -88,7 +90,6 @@ func load_room(room_id: String, custom_spawn_tile: Vector2) -> void:
 		safe_room_rect = Rect2()
 		GameState.in_safe_room = false
 
-	# Clear previous room physics, occluders, and enemies
 	for child in walls_body.get_children():
 		child.queue_free()
 	for child in occluders_root.get_children():
@@ -98,6 +99,7 @@ func load_room(room_id: String, custom_spawn_tile: Vector2) -> void:
 
 	tracer_lines.clear()
 	floating_texts.clear()
+	enemy_projectiles.clear()
 	EventBus.boss_status_changed.emit(false, "", 0, 1, 1)
 
 	active_doors = (current_room.get("doors", []) as Array).duplicate(true)
@@ -116,6 +118,13 @@ func load_room(room_id: String, custom_spawn_tile: Vector2) -> void:
 	_bake_navigation_mesh()
 	queue_redraw()
 	fx_layer.queue_redraw()
+
+	# Quickdraw perk fills ATB when entering a room with active threats
+	var has_threats: bool = not get_tree().get_nodes_in_group("enemies").is_empty()
+	AudioManager.set_combat_music(has_threats)
+	if has_threats and GameState.has_weapon_perk("quickdraw"):
+		GameState.atb = 100.0
+		EventBus.player_stats_changed.emit()
 
 	var title: String = str(current_room.get("title", room_id))
 	EventBus.room_changed.emit(title)
@@ -265,6 +274,29 @@ func _process(delta: float) -> void:
 		if float(floating_texts[i]["ttl"]) <= 0.0:
 			floating_texts.remove_at(i)
 
+	# Update enemy projectiles
+	if not GameState.is_world_paused():
+		for i in range(enemy_projectiles.size() - 1, -1, -1):
+			var pr: Dictionary = enemy_projectiles[i]
+			pr["ttl"] = float(pr["ttl"]) - delta
+			var ppos: Vector2 = (pr["pos"] as Vector2) + (pr["vel"] as Vector2) * delta
+			pr["pos"] = ppos
+			var tx: int = int(ppos.x / float(TILE_SIZE))
+			var ty: int = int(ppos.y / float(TILE_SIZE))
+			var hit_wall: bool = ty < 0 or ty >= map_rows or tx < 0 or tx >= map_cols or str(layout_rows[ty])[tx] == "#"
+			if hit_wall or float(pr["ttl"]) <= 0.0:
+				enemy_projectiles.remove_at(i)
+				continue
+			if ppos.distance_to(player.global_position + Vector2(0, -18)) <= 20.0:
+				if not player.is_invulnerable():
+					GameState.apply_damage(int(pr["damage"]), player.global_position)
+					var st: String = str(pr.get("status", ""))
+					if st != "" and randf() < 0.65:
+						GameState.apply_status(st, 7.0, player.global_position)
+				else:
+					EventBus.floating_text_requested.emit("ESQUIVOU!", player.global_position + Vector2(0, -52), Color(0.35, 0.95, 1.0))
+				enemy_projectiles.remove_at(i)
+
 	if redraw_fx:
 		fx_layer.queue_redraw()
 
@@ -361,6 +393,10 @@ func trigger_interact() -> void:
 		EventBus.interaction_prompt_changed.emit(false, "")
 
 	elif itype == "door":
+		if GameState.current_room_id == "main_hall" and not GameState.defeated_enemy_keys.has("main_hall_boss"):
+			AudioManager.play_sfx("player_hurt", -6.0, 0.1)
+			EventBus.toast_message.emit("LOCKDOWN ATIVO! Derrote o Mutante Alfa para destrancar a saída!", Color(1.0, 0.35, 0.35))
+			return
 		if bool(data.get("requires_keycard", false)) and not GameState.has_keycard:
 			AudioManager.play_sfx("player_hurt", -6.0, 0.1)
 			EventBus.toast_message.emit("Porta selada! Encontre o Keycard de Evacuação no Corredor Leste.", Color(1.0, 0.45, 0.35))
@@ -375,6 +411,11 @@ func trigger_interact() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if GameState.is_game_over or GameState.is_victory or GameState.is_dialogue_open or GameState.is_menu_open:
+		return
+
+	if event.is_action_pressed("reload") and not GameState.is_tactical_paused:
+		GameState.reload_equipped_weapon()
+		get_viewport().set_input_as_handled()
 		return
 
 	if event.is_action_pressed("interact") and not GameState.is_tactical_paused:
@@ -432,15 +473,14 @@ func _find_enemy_near_point(world_pos: Vector2, pick_radius: float) -> EnemyBase
 
 
 func get_nearest_enemy_in_range() -> EnemyBase:
-	var max_r: float = GameState.get_current_range_px()
 	var best: EnemyBase = null
-	var best_dist: float = max_r
+	var best_dist: float = 99999.0
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var en: EnemyBase = node as EnemyBase
 		if en == null:
 			continue
 		var d: float = player.global_position.distance_to(en.global_position)
-		if d <= best_dist:
+		if d < best_dist:
 			best_dist = d
 			best = en
 	return best
@@ -449,7 +489,7 @@ func get_nearest_enemy_in_range() -> EnemyBase:
 func execute_quick_tactical_fire() -> void:
 	var target: EnemyBase = get_nearest_enemy_in_range()
 	if target == null:
-		EventBus.toast_message.emit("Nenhum inimigo dentro da esfera de alcance!", Color(1.0, 0.72, 0.3))
+		EventBus.toast_message.emit("Nenhuma ameaça na sala!", Color(1.0, 0.72, 0.3))
 		return
 	execute_tactical_attack_on(target)
 
@@ -459,10 +499,9 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 		return
 
 	var dist: float = player.global_position.distance_to(target.global_position)
-	if dist > GameState.get_current_range_px():
-		EventBus.toast_message.emit("Alvo fora do alcance da arma!", Color(1.0, 0.65, 0.3))
-		return
-
+	var max_r: float = GameState.get_current_range_px()
+	var in_range: bool = dist <= max_r
+	var falloff_mult: float = 1.0 if in_range else clampf(1.0 - ((dist - max_r) / 220.0), 0.35, 0.82)
 	var is_energy: bool = GameState.tactical_action_mode == "energy_shot"
 
 	if is_energy:
@@ -471,7 +510,7 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 			return
 		GameState.pe -= 30.0
 		var dir: Vector2 = (target.global_position - player.global_position).normalized()
-		var beam_end: Vector2 = player.global_position + dir * GameState.get_current_range_px()
+		var beam_end: Vector2 = player.global_position + dir * (max_r + 60.0)
 		EventBus.weapon_fired.emit(player.global_position + Vector2(0, -24), beam_end + Vector2(0, -24), true)
 		EventBus.screen_shake_requested.emit(6.5, 0.2)
 
@@ -482,9 +521,9 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 				continue
 			var rel: Vector2 = en.global_position - player.global_position
 			var proj: float = rel.dot(dir)
-			if proj > 0.0 and proj <= GameState.get_current_range_px() + 20.0:
+			if proj > 0.0 and proj <= max_r + 80.0:
 				var perp: float = absf(rel.cross(dir))
-				if perp <= 40.0:
+				if perp <= 42.0:
 					hit_enemies.append(en)
 		hit_enemies.sort_custom(func(a: EnemyBase, b: EnemyBase) -> bool:
 			return player.global_position.distance_squared_to(a.global_position) < player.global_position.distance_squared_to(b.global_position)
@@ -492,23 +531,65 @@ func execute_tactical_attack_on(target: EnemyBase) -> void:
 		var falloff: Array[float] = [1.0, 0.6, 0.4, 0.2]
 		var base_pwr: float = float(GameState.get_total_attack()) * 1.65
 		for i in range(hit_enemies.size()):
+			var en: EnemyBase = hit_enemies[i]
 			var mult: float = falloff[mini(i, falloff.size() - 1)]
-			hit_enemies[i].take_damage(int(round(base_pwr * mult)), i == 0)
+			# BIO-RESONANCE COMBO: Chilled/Slowed enemy hit by Energy Shot takes +50% bonus!
+			if en.is_chilled():
+				mult *= 1.5
+				EventBus.floating_text_requested.emit("BIO-RESSONÂNCIA +50%!", en.global_position + Vector2(0, -76), Color(0.45, 0.95, 1.0))
+			en.take_damage(int(round(base_pwr * mult)), i == 0, GameState.selected_boss_part)
+		GameState.consume_atb()
 	else:
 		var weapon: WeaponData = GameState.get_equipped_weapon()
-		if GameState.get_current_ammo() <= 0:
-			EventBus.toast_message.emit("Sem munição %s!" % weapon.caliber, Color(1.0, 0.35, 0.35))
+		if weapon.mag_current <= 0:
+			if GameState.reload_equipped_weapon():
+				GameState.consume_atb()
+				GameState.set_tactical_pause(false)
 			return
-		var shots: int = GameState.consume_current_ammo(weapon.rate_of_fire)
+		var shots: int = GameState.consume_mag_ammo(weapon.rate_of_fire)
+		# Darkness status can cause miss
+		if GameState.darkness_timer > 0.0 and randf() < 0.35:
+			EventBus.weapon_fired.emit(player.global_position + Vector2(0, -24), target.global_position + Vector2(24, -40), false)
+			EventBus.floating_text_requested.emit("ERROU (DARKNESS)!", target.global_position + Vector2(0, -56), Color(0.65, 0.55, 0.9))
+			GameState.consume_atb()
+			GameState.set_tactical_pause(false)
+			return
+
 		var crit_chance: float = 0.45 if GameState.level >= 5 else 0.15
-		var is_crit: bool = randf() < crit_chance
+		if weapon.perks.has("critup"):
+			crit_chance += 0.22
+		var is_crit: bool = in_range and (randf() < crit_chance)
 		var per_shot: float = float(GameState.get_total_attack()) * (0.72 if shots > 1 else 1.25)
-		var total_dmg: int = int(round(per_shot * float(shots) * (1.5 if is_crit else 1.0)))
+		if weapon.perks.has("heat"):
+			per_shot *= 1.25
+		var total_dmg: int = int(round(per_shot * float(shots) * (1.5 if is_crit else 1.0) * falloff_mult))
+
 		EventBus.weapon_fired.emit(player.global_position + Vector2(0, -24), target.global_position + Vector2(0, -24), false)
 		EventBus.screen_shake_requested.emit(4.0, 0.14)
-		target.take_damage(total_dmg, is_crit)
+		if not in_range:
+			EventBus.floating_text_requested.emit("OUT OF RANGE", target.global_position + Vector2(0, -72), Color(1.0, 0.65, 0.25))
+		var hit_part: String = GameState.selected_boss_part if in_range else "body"
+		target.take_damage(total_dmg, is_crit, hit_part)
+		if is_instance_valid(target) and target.hp > 0:
+			target.apply_weapon_perks(weapon.perks)
 
-	GameState.consume_atb()
+		GameState.consume_atb()
+		# 2x Command perk refunds 45% ATB immediately!
+		if weapon.perks.has("2comm"):
+			GameState.atb = 45.0
+			EventBus.floating_text_requested.emit("2x COMMAND!", player.global_position + Vector2(0, -60), Color(1.0, 0.85, 0.3))
+			EventBus.player_stats_changed.emit()
+
+	GameState.set_tactical_pause(false)
+
+
+func cast_detox() -> void:
+	if GameState.pe < 20.0:
+		EventBus.toast_message.emit("PE insuficiente para DETOX (20 PE).", Color(1.0, 0.5, 0.5))
+		return
+	GameState.pe -= 20.0
+	AudioManager.play_sfx("heal", -2.5, 0.08)
+	GameState.purify_statuses(player.global_position)
 	GameState.set_tactical_pause(false)
 
 
@@ -631,11 +712,57 @@ func _on_floating_text(text: String, world_pos: Vector2, color: Color) -> void:
 	fx_layer.queue_redraw()
 
 
-func _on_enemy_defeated(e_name: String, exp_r: int, bp_r: int, _pos: Vector2) -> void:
+func _on_enemy_projectile_spawned(origin: Vector2, dir: Vector2, damage: int, status_effect: String) -> void:
+	enemy_projectiles.append({
+		"pos": origin,
+		"vel": dir * 195.0,
+		"damage": damage,
+		"status": status_effect,
+		"ttl": 3.0,
+	})
+
+
+func _on_enemy_defeated(e_name: String, exp_r: int, bp_r: int, pos: Vector2) -> void:
 	EventBus.toast_message.emit("%s eliminado! +%d EXP / +%d BP" % [e_name, exp_r, bp_r], Color(0.55, 1.0, 0.72))
+
+	# 60% chance to drop a glowing supply pickup on defeat
+	if randf() < 0.60:
+		var drop_tile: Vector2 = pos / float(TILE_SIZE)
+		var drop_id: String = "drop_%d_%d" % [int(pos.x), Time.get_ticks_msec()]
+		var roll: float = randf()
+		if roll < 0.55:
+			var cal: String = GameState.get_equipped_weapon().caliber
+			active_pickups.append({
+				"id": drop_id, "tile": drop_tile, "kind": "supply",
+				"label": "Pegar Drop: Munição %s" % cal,
+				"ammo_caliber": cal, "ammo_amount": 18,
+				"color": Color(1.0, 0.85, 0.25),
+			})
+		elif roll < 0.85:
+			active_pickups.append({
+				"id": drop_id, "tile": drop_tile, "kind": "supply",
+				"label": "Pegar Drop: Medkit",
+				"medkits": 1, "color": Color(0.35, 1.0, 0.6),
+			})
+		else:
+			active_pickups.append({
+				"id": drop_id, "tile": drop_tile, "kind": "supply",
+				"label": "Pegar Drop: Weapon Tool",
+				"tools": 1, "color": Color(0.95, 0.68, 0.25),
+			})
+
+	call_deferred("_check_room_cleared")
 	if GameState.current_room_id == "main_hall" and GameState.defeated_enemy_keys.has("main_hall_boss"):
 		pending_victory_after_dialogue = true
 		call_deferred("_trigger_dialogue_by_id", "prologue_victory")
+
+
+func _check_room_cleared() -> void:
+	if get_tree().get_nodes_in_group("enemies").is_empty():
+		AudioManager.set_combat_music(false)
+		EventBus.toast_message.emit("AFTERMATH: Área limpa! +15 BP bônus de sobrevivência.", Color(0.35, 1.0, 0.72))
+		GameState.bp += 15
+		EventBus.player_stats_changed.emit()
 
 
 func _on_dialogue_finished() -> void:
@@ -723,6 +850,15 @@ func draw_fx_layer() -> void:
 		var burst_r: float = clampf(ttl * 70.0, 4.0, 18.0)
 		fx_layer.draw_circle(from_p, burst_r * 0.65, Color(1.0, 0.96, 0.72, clampf(ttl * 5.0, 0.0, 0.9)))
 		fx_layer.draw_arc(to_p, burst_r, 0.0, TAU, 16, col, 2.0, true)
+
+	# Enemy acid / darkness projectiles
+	for pr in enemy_projectiles:
+		var ppos: Vector2 = pr["pos"] as Vector2
+		var is_dark: bool = str(pr.get("status", "")) == "darkness"
+		var pcol: Color = Color(0.75, 0.35, 1.0) if is_dark else Color(0.35, 1.0, 0.35)
+		fx_layer.draw_circle(ppos, 10.0, Color(pcol.r, pcol.g, pcol.b, 0.35))
+		fx_layer.draw_circle(ppos, 5.5, pcol)
+		fx_layer.draw_arc(ppos, 9.0, 0.0, TAU, 16, Color.WHITE, 1.2, true)
 
 	# Floating combat numbers
 	var font: Font = ThemeDB.fallback_font

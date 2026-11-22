@@ -209,6 +209,38 @@ offset_bottom = -24.0
 grow_vertical = 0
 script = ExtResource("4_joy")
 
+[node name="BtnDash" type="Button" parent="."]
+unique_name_in_owner = true
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -152.0
+offset_top = -178.0
+offset_right = -20.0
+offset_bottom = -132.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 12
+text = "DASH (ESQUIVA)"
+
+[node name="BtnReload" type="Button" parent="."]
+unique_name_in_owner = true
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -260.0
+offset_top = -178.0
+offset_right = -162.0
+offset_bottom = -132.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 11
+text = "RECARREGAR"
+
 [node name="BtnTactical" type="Button" parent="."]
 unique_name_in_owner = true
 anchors_preset = 3
@@ -233,63 +265,78 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -230.0
-offset_top = -156.0
-offset_right = 230.0
+offset_left = -245.0
+offset_top = -174.0
+offset_right = 245.0
 offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 0
 
 [node name="VBox" type="VBoxContainer" parent="TacticalPanel"]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 5
 
 [node name="Hint" type="Label" parent="TacticalPanel/VBox"]
 layout_mode = 2
 modulate = Color(0.45, 0.95, 1, 1)
-theme_override_font_sizes/font_size = 12
-text = "PAUSA TÁTICA — Toque em um inimigo na esfera ou escolha uma ação:"
+theme_override_font_sizes/font_size = 11
+text = "PAUSA TÁTICA — Toque em um inimigo (esfera = 100% dano) ou escolha:"
 horizontal_alignment = 1
 
 [node name="Row1" type="HBoxContainer" parent="TacticalPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="BtnFire" type="Button" parent="TacticalPanel/VBox/Row1"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "ATIRAR (ALVO PRÓXIMO)"
+text = "ATIRAR"
 
 [node name="BtnEnergy" type="Button" parent="TacticalPanel/VBox/Row1"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "ENERGY SHOT (30 PE)"
 
+[node name="BtnBossPart" type="Button" parent="TacticalPanel/VBox/Row1"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(130, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "ALVO: CORPO"
+
 [node name="Row2" type="HBoxContainer" parent="TacticalPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="BtnHeal" type="Button" parent="TacticalPanel/VBox/Row2"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "HEAL (30 PE)"
+text = "HEAL (30)"
 
 [node name="BtnHaste" type="Button" parent="TacticalPanel/VBox/Row2"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "HASTE (25 PE)"
+text = "HASTE (25)"
+
+[node name="BtnDetox" type="Button" parent="TacticalPanel/VBox/Row2"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "DETOX (20)"
 
 [node name="BtnCancel" type="Button" parent="TacticalPanel/VBox/Row2"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 38)
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 text = "VOLTAR"
 

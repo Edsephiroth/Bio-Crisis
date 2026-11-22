@@ -16,5 +16,6 @@ signal dialogue_finished
 signal interaction_prompt_changed(visible: bool, label: String)
 signal room_changed(room_title: String)
 signal boss_status_changed(active: bool, boss_name: String, hp: int, max_hp: int, phase: int)
+signal enemy_projectile_spawned(origin: Vector2, dir: Vector2, damage: int, status_effect: String)
 signal game_over_triggered
 signal victory_triggered

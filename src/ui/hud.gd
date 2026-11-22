@@ -29,6 +29,10 @@ extends CanvasLayer
 @onready var boss_name_label: Label = %BossNameLabel
 @onready var boss_hp_bar: ProgressBar = %BossHpBar
 @onready var btn_interact: Button = %BtnInteract
+@onready var btn_dash: Button = %BtnDash
+@onready var btn_reload: Button = %BtnReload
+@onready var btn_boss_part: Button = %BtnBossPart
+@onready var btn_detox: Button = %BtnDetox
 
 @onready var end_overlay: ColorRect = %EndOverlay
 @onready var end_title: Label = %EndTitle
@@ -53,11 +57,15 @@ func _ready() -> void:
 	btn_energy.pressed.connect(_on_btn_energy_pressed)
 	btn_heal.pressed.connect(_on_btn_heal_pressed)
 	btn_haste.pressed.connect(_on_btn_haste_pressed)
+	btn_detox.pressed.connect(_on_btn_detox_pressed)
+	btn_boss_part.pressed.connect(_on_btn_boss_part_pressed)
 	btn_cancel.pressed.connect(_on_btn_cancel_pressed)
 	btn_switch_weapon.pressed.connect(func() -> void: GameState.cycle_weapon())
 	btn_mute.pressed.connect(_on_btn_mute_pressed)
 	btn_menu.pressed.connect(func() -> void: inventory_menu.open_menu())
 	btn_interact.pressed.connect(_on_btn_interact_pressed)
+	btn_dash.pressed.connect(_on_btn_dash_pressed)
+	btn_reload.pressed.connect(func() -> void: GameState.reload_equipped_weapon())
 	btn_restart.pressed.connect(_on_restart_pressed)
 
 	tactical_panel.visible = false
@@ -72,6 +80,11 @@ func _process(delta: float) -> void:
 		toast_timer -= delta
 		if toast_timer <= 0.0:
 			toast_label.text = ""
+	var lvl: ChildrenFirstHall = _get_level()
+	if lvl != null and lvl.player != null:
+		var cd: float = lvl.player.dash_cooldown
+		btn_dash.disabled = cd > 0.0 or GameState.is_world_paused()
+		btn_dash.text = "DASH (%.1fs)" % cd if cd > 0.0 else "DASH (ESQUIVA)"
 
 
 func _get_level() -> ChildrenFirstHall:
@@ -98,6 +111,12 @@ func _refresh_hud() -> void:
 		badges.append("SAFE ROOM")
 	if GameState.has_keycard:
 		badges.append("KEYCARD")
+	if GameState.poison_timer > 0.0:
+		badges.append("POISON %ds" % int(ceil(GameState.poison_timer)))
+	if GameState.darkness_timer > 0.0:
+		badges.append("DARKNESS %ds" % int(ceil(GameState.darkness_timer)))
+	if GameState.stiff_timer > 0.0:
+		badges.append("STIFF %ds" % int(ceil(GameState.stiff_timer)))
 	if GameState.haste_timer > 0.0:
 		badges.append("HASTE %ds" % int(ceil(GameState.haste_timer)))
 	if GameState.barrier_timer > 0.0:
@@ -108,7 +127,11 @@ func _refresh_hud() -> void:
 
 	var weapon: WeaponData = GameState.get_equipped_weapon()
 	weapon_label.text = "%s (%s)" % [weapon.display_name, weapon.caliber]
-	ammo_label.text = "Mun %s: %d  |  ATK %d" % [weapon.caliber, GameState.get_current_ammo(), GameState.get_total_attack()]
+	ammo_label.text = "Pente: %d/%d  |  Res: %d" % [weapon.mag_current, weapon.capacity, GameState.get_current_ammo()]
+	btn_reload.disabled = weapon.mag_current >= weapon.capacity or GameState.get_current_ammo() <= 0
+	btn_boss_part.visible = boss_bar_panel.visible
+	var part_names: Dictionary = {"body": "CORPO", "arms": "BRAÇOS", "core": "NÚCLEO"}
+	btn_boss_part.text = "ALVO: %s" % str(part_names.get(GameState.selected_boss_part, "CORPO"))
 	if ResourceLoader.exists(weapon.icon_path):
 		weapon_icon.texture = load(weapon.icon_path) as Texture2D
 
@@ -210,6 +233,25 @@ func _on_btn_interact_pressed() -> void:
 	var lvl: ChildrenFirstHall = _get_level()
 	if lvl != null:
 		lvl.trigger_interact()
+
+
+func _on_btn_dash_pressed() -> void:
+	var lvl: ChildrenFirstHall = _get_level()
+	if lvl != null and lvl.player != null:
+		lvl.player.trigger_dash()
+
+
+func _on_btn_detox_pressed() -> void:
+	var lvl: ChildrenFirstHall = _get_level()
+	if lvl != null:
+		lvl.cast_detox()
+
+
+func _on_btn_boss_part_pressed() -> void:
+	var order: Array[String] = ["body", "arms", "core"]
+	var idx: int = order.find(GameState.selected_boss_part)
+	GameState.selected_boss_part = order[(idx + 1) % order.size()]
+	_refresh_hud()
 
 
 func _on_btn_mute_pressed() -> void:

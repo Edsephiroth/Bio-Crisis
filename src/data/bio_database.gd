@@ -7,29 +7,29 @@ static func create_starter_weapons() -> Array[WeaponData]:
 	var list: Array[WeaponData] = []
 
 	list.append(_make_weapon(
-		"m93r", "M93R", "9mm", 18, 230.0, 3, 20,
+		"m93r", "M93R", "9mm", 18, 230.0, 3, 18, PackedStringArray(["quickdraw"]),
 		"res://assets/icons/Pe1_icon_inv_pistol.png",
-		"Pistola italiana 9mm com rajada de 3 tiros e ótimo controle."
+		"Pistola italiana 9mm com rajada de 3 tiros. Perk: Quickdraw."
 	))
 	list.append(_make_weapon(
-		"glock19", "Glock 19", "9mm", 14, 215.0, 2, 16,
+		"glock19", "Glock 19", "9mm", 14, 215.0, 2, 16, PackedStringArray(["frost", "critup"]),
 		"res://assets/icons/Pe1_icon_inv_pistol.png",
-		"Pistola leve de polímero. Excelente doadora para Tune."
+		"Pistola leve com munição criogênica. Perks: Frost + Crit Up (ótima para Tune!)."
 	))
 	list.append(_make_weapon(
-		"m870", "M870 Shotgun", "12G", 36, 165.0, 1, 6,
+		"m870", "M870 Shotgun", "12G", 36, 165.0, 1, 6, PackedStringArray(["heat"]),
 		"res://assets/icons/Pe1_icon_inv_shotgun.png",
-		"Escopeta tática 12G. Curto alcance com impacto devastador."
+		"Escopeta tática 12G com cartuchos térmicos. Perk: Heat (+25% dano)."
 	))
 	list.append(_make_weapon(
-		"mp5a5", "MP5A5 SMG", "9mm", 22, 225.0, 4, 30,
+		"mp5a5", "MP5A5 SMG", "9mm", 22, 225.0, 4, 28, PackedStringArray(["acid"]),
 		"res://assets/icons/Pe1_icon_inv_smg.png",
-		"Submetralhadora compacta de altíssima cadência."
+		"Submetralhadora de alta cadência. Perk: Acid (corrosão contínua)."
 	))
 	list.append(_make_weapon(
-		"m4a1", "M4A1 Rifle", "5.56mm", 28, 300.0, 2, 30,
+		"m4a1", "M4A1 Rifle", "5.56mm", 28, 300.0, 2, 24, PackedStringArray(["2comm"]),
 		"res://assets/icons/Pe1_icon_inv_rifle.png",
-		"Carabina tática de longo alcance e alta precisão."
+		"Carabina tática de longo alcance. Perk: 2x Command (recupera 45% ATB!)."
 	))
 	return list
 
@@ -37,19 +37,19 @@ static func create_starter_weapons() -> Array[WeaponData]:
 static func create_starter_armors() -> Array[ArmorData]:
 	var list: Array[ArmorData] = []
 	list.append(_make_armor(
-		"gala_jacket", "Jaqueta de Gala", 6, 4, 0,
+		"gala_jacket", "Jaqueta de Gala", 6, 4, 0, PackedStringArray([]),
 		"res://assets/icons/Pe1_icon_inv_jacket.png",
 		"Roupa civil usada por Elisabeth na gala da ONG Children First."
 	))
 	list.append(_make_armor(
-		"kv_vest", "Colete Kevlar", 16, 8, 40,
+		"kv_vest", "Colete Kevlar", 16, 8, 40, PackedStringArray(["nopois", "autoheal"]),
 		"res://assets/icons/Pe1_icon_inv_vest.png",
-		"Colete balístico leve deixado pelo desconhecido."
+		"Colete balístico tático. Perks: Anti-Poison + Auto-Medkit (<25% HP)."
 	))
 	list.append(_make_armor(
-		"cm_protector", "Protetor Celular", 22, 20, 80,
+		"cm_protector", "Protetor Celular", 22, 20, 80, PackedStringArray(["nopois", "nostiff", "nodark"]),
 		"res://assets/icons/Pe1_icon_inv_protector.png",
-		"Revestimento experimental com alta resistência a bio-energia."
+		"Revestimento bio-celular. Perks: Imune a Poison, Stiff e Darkness."
 	))
 	return list
 
@@ -123,7 +123,7 @@ static func get_bestiary_entries() -> Array[Dictionary]:
 
 
 static func _make_weapon(
-	id: String, dname: String, cal: String, atk: int, rng: float, rof: int, cap: int, icon: String, desc: String
+	id: String, dname: String, cal: String, atk: int, rng: float, rof: int, cap: int, perks: PackedStringArray, icon: String, desc: String
 ) -> WeaponData:
 	var w := WeaponData.new()
 	w.id = id
@@ -133,13 +133,15 @@ static func _make_weapon(
 	w.range_px = rng
 	w.rate_of_fire = rof
 	w.capacity = cap
+	w.mag_current = cap
+	w.perks = perks
 	w.icon_path = icon
 	w.description = desc
 	return w
 
 
 static func _make_armor(
-	id: String, dname: String, def: int, pe_def: int, hp_b: int, icon: String, desc: String
+	id: String, dname: String, def: int, pe_def: int, hp_b: int, perks: PackedStringArray, icon: String, desc: String
 ) -> ArmorData:
 	var a := ArmorData.new()
 	a.id = id
@@ -147,6 +149,7 @@ static func _make_armor(
 	a.defense_bonus = def
 	a.pe_defense_bonus = pe_def
 	a.hp_bonus = hp_b
+	a.perks = perks
 	a.icon_path = icon
 	a.description = desc
 	return a

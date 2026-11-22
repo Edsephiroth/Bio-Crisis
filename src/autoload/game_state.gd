@@ -31,6 +31,13 @@ var haste_timer: float = 0.0
 var barrier_timer: float = 0.0
 var slow_timer: float = 0.0
 
+var poison_timer: float = 0.0
+var darkness_timer: float = 0.0
+var stiff_timer: float = 0.0
+var _poison_accum: float = 0.0
+
+var selected_boss_part: String = "body" # "arms", "body", "core"
+
 var in_safe_room: bool = false
 var is_tactical_paused: bool = false
 var is_menu_open: bool = false
@@ -96,6 +103,11 @@ func reset_run() -> void:
 	haste_timer = 0.0
 	barrier_timer = 0.0
 	slow_timer = 0.0
+	poison_timer = 0.0
+	darkness_timer = 0.0
+	stiff_timer = 0.0
+	_poison_accum = 0.0
+	selected_boss_part = "body"
 	in_safe_room = false
 	is_tactical_paused = false
 	is_menu_open = false
@@ -158,16 +170,42 @@ func cycle_weapon() -> void:
 	equip_weapon((equipped_weapon_index + 1) % weapons.size())
 
 
+func has_weapon_perk(perk_id: String) -> bool:
+	return get_equipped_weapon().perks.has(perk_id)
+
+
+func has_armor_perk(perk_id: String) -> bool:
+	return get_equipped_armor().perks.has(perk_id)
+
+
 func get_current_ammo() -> int:
 	var cal: String = get_equipped_weapon().caliber
 	return int(ammo_by_caliber.get(cal, 0))
 
 
-func consume_current_ammo(count: int) -> int:
-	var cal: String = get_equipped_weapon().caliber
-	var avail: int = int(ammo_by_caliber.get(cal, 0))
-	var used: int = mini(count, avail)
-	ammo_by_caliber[cal] = avail - used
+func reload_equipped_weapon() -> bool:
+	var w: WeaponData = get_equipped_weapon()
+	var needed: int = w.capacity - w.mag_current
+	if needed <= 0:
+		EventBus.toast_message.emit("Pente de %s já está cheio!" % w.display_name, Color(0.6, 0.85, 1.0))
+		return false
+	var reserve: int = int(ammo_by_caliber.get(w.caliber, 0))
+	if reserve <= 0:
+		EventBus.toast_message.emit("Sem munição reserva %s!" % w.caliber, Color(1.0, 0.35, 0.35))
+		return false
+	var loaded: int = mini(needed, reserve)
+	w.mag_current += loaded
+	ammo_by_caliber[w.caliber] = reserve - loaded
+	AudioManager.play_sfx("reload", -2.0, 0.04)
+	EventBus.toast_message.emit("Recarregado: %s (%d/%d)" % [w.display_name, w.mag_current, w.capacity], Color(0.45, 0.95, 1.0))
+	EventBus.player_stats_changed.emit()
+	return true
+
+
+func consume_mag_ammo(count: int) -> int:
+	var w: WeaponData = get_equipped_weapon()
+	var used: int = mini(count, w.mag_current)
+	w.mag_current -= used
 	EventBus.player_stats_changed.emit()
 	return used
 
@@ -187,6 +225,12 @@ func tune_weapon(target_idx: int, donor_idx: int) -> String:
 
 	target.attack_bonus += atk_gain
 	target.range_px = minf(380.0, target.range_px + rng_gain)
+	var transferred_perks: PackedStringArray = PackedStringArray()
+	for p in donor.perks:
+		if not target.perks.has(p) and target.perks.size() < 3:
+			target.perks.append(p)
+			transferred_perks.append(p.to_upper())
+
 	if not target.display_name.ends_with("+"):
 		target.display_name += "+"
 
@@ -199,7 +243,40 @@ func tune_weapon(target_idx: int, donor_idx: int) -> String:
 
 	AudioManager.play_sfx("level_up", -3.0, 0.05)
 	EventBus.player_stats_changed.emit()
-	return "TUNE concluído! %s ganhou +%d ATK e +%dpx alcance." % [target.display_name, atk_gain, int(rng_gain)]
+	var perk_str: String = (" | Perks: " + ", ".join(transferred_perks)) if not transferred_perks.is_empty() else ""
+	return "TUNE! %s +%d ATK, +%dpx%s" % [target.display_name, atk_gain, int(rng_gain), perk_str]
+
+
+func apply_status(status_id: String, duration: float, world_pos: Vector2) -> void:
+	match status_id:
+		"poison":
+			if has_armor_perk("nopois"):
+				EventBus.floating_text_requested.emit("IMUNE A POISON!", world_pos + Vector2(0, -52), Color(0.4, 1.0, 0.7))
+				return
+			poison_timer = maxf(poison_timer, duration)
+			EventBus.floating_text_requested.emit("POISON!", world_pos + Vector2(0, -52), Color(0.4, 0.95, 0.35))
+		"darkness":
+			if has_armor_perk("nodark"):
+				EventBus.floating_text_requested.emit("IMUNE A DARKNESS!", world_pos + Vector2(0, -52), Color(0.4, 1.0, 0.7))
+				return
+			darkness_timer = maxf(darkness_timer, duration)
+			EventBus.floating_text_requested.emit("DARKNESS!", world_pos + Vector2(0, -52), Color(0.6, 0.5, 0.85))
+		"stiff":
+			if has_armor_perk("nostiff"):
+				EventBus.floating_text_requested.emit("IMUNE A STIFF!", world_pos + Vector2(0, -52), Color(0.4, 1.0, 0.7))
+				return
+			stiff_timer = maxf(stiff_timer, duration)
+			EventBus.floating_text_requested.emit("STIFF (LENTO)!", world_pos + Vector2(0, -52), Color(0.5, 0.75, 1.0))
+	EventBus.player_stats_changed.emit()
+
+
+func purify_statuses(world_pos: Vector2) -> void:
+	poison_timer = 0.0
+	darkness_timer = 0.0
+	stiff_timer = 0.0
+	_poison_accum = 0.0
+	EventBus.floating_text_requested.emit("STATUS PURIFICADO!", world_pos + Vector2(0, -54), Color(0.35, 1.0, 0.8))
+	EventBus.player_stats_changed.emit()
 
 
 func use_medkit() -> bool:
@@ -317,6 +394,22 @@ func tick_realtime(delta: float) -> void:
 		slow_timer = maxf(0.0, slow_timer - delta)
 		changed = true
 
+	if poison_timer > 0.0:
+		poison_timer = maxf(0.0, poison_timer - delta)
+		_poison_accum += delta
+		if _poison_accum >= 1.0:
+			_poison_accum -= 1.0
+			hp = maxi(1, hp - 10)
+		changed = true
+
+	if darkness_timer > 0.0:
+		darkness_timer = maxf(0.0, darkness_timer - delta)
+		changed = true
+
+	if stiff_timer > 0.0:
+		stiff_timer = maxf(0.0, stiff_timer - delta)
+		changed = true
+
 	var atb_mult: float = 2.0 if haste_timer > 0.0 else 1.0
 	if atb < 100.0:
 		var was_ready: bool = atb >= 99.9
@@ -330,9 +423,15 @@ func tick_realtime(delta: float) -> void:
 		pe = minf(max_pe, pe + pe_regen * delta)
 		changed = true
 
-	if in_safe_room and hp < max_hp:
-		hp = mini(max_hp, hp + int(ceil(18.0 * delta)))
-		changed = true
+	if in_safe_room:
+		if poison_timer > 0.0 or darkness_timer > 0.0 or stiff_timer > 0.0:
+			poison_timer = 0.0
+			darkness_timer = 0.0
+			stiff_timer = 0.0
+			changed = true
+		if hp < max_hp:
+			hp = mini(max_hp, hp + int(ceil(18.0 * delta)))
+			changed = true
 
 	if changed:
 		EventBus.player_stats_changed.emit()
@@ -360,6 +459,12 @@ func apply_damage(amount: int, world_pos: Vector2) -> void:
 	AudioManager.play_sfx("player_hurt", -2.0, 0.05)
 	EventBus.floating_text_requested.emit("-%d" % mitigated, world_pos + Vector2(0, -40), Color(1.0, 0.28, 0.32))
 	EventBus.screen_shake_requested.emit(7.0, 0.22)
+
+	# Auto-Heal armor perk: auto-triggers Medkit below 25% HP
+	if hp > 0 and hp < int(max_hp * 0.25) and has_armor_perk("autoheal") and medkits > 0:
+		use_medkit()
+		EventBus.floating_text_requested.emit("AUTO-HEAL!", world_pos + Vector2(0, -64), Color(0.3, 1.0, 0.6))
+
 	EventBus.player_stats_changed.emit()
 
 	if hp <= 0:
