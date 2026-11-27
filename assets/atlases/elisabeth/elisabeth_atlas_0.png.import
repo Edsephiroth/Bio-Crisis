@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://oyh0tbqjbyh4"
-path="res://.godot/imported/agatha_run_sheet.png-792de8f4b53b8d545e4d0ca97564f37f.ctex"
+uid="uid://drldmrxlfasau"
+path="res://.godot/imported/elisabeth_atlas_0.png-e3dbe257e22b445cf8fc5c5b73c85aed.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/agatha_run_sheet.png"
-dest_files=["res://.godot/imported/agatha_run_sheet.png-792de8f4b53b8d545e4d0ca97564f37f.ctex"]
+source_file="res://assets/atlases/elisabeth/elisabeth_atlas_0.png"
+dest_files=["res://.godot/imported/elisabeth_atlas_0.png-e3dbe257e22b445cf8fc5c5b73c85aed.ctex"]
 
 [params]
 

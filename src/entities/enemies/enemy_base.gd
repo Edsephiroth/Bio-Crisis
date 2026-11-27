@@ -1,16 +1,16 @@
 class_name EnemyBase
 extends CharacterBody2D
 
-enum AIState { IDLE, CHASE, WINDUP, SPIT_WINDUP, SHOCKWAVE_WINDUP, COOLDOWN }
+enum AIState { IDLE, CHASE, WINDUP, SPIT_WINDUP, SHOCKWAVE_WINDUP, SHOCK, COOLDOWN, DYING }
 
 @export var enemy_key: String = ""
 @export var bestiary_id: String = "deformed_common"
-@export var enemy_name: String = "Deformed Attendee"
+@export var enemy_name: String = "Executiva Deformada"
 @export var is_boss: bool = false
 @export var max_hp: int = 95
 @export var move_speed: float = 76.0
 @export var attack_damage: int = 38
-@export var attack_range: float = 52.0
+@export var attack_range: float = 54.0
 @export var detection_range: float = 360.0
 @export var exp_reward: int = 4
 @export var bp_reward: int = 18
@@ -35,15 +35,30 @@ var nav_repath_timer: float = 0.0
 var anim_timer: float = 0.0
 var anim_frame: int = 0
 var dir_row: int = 0
+var dir8: int = 0
 var hit_flash_timer: float = 0.0
 var is_in_tactical_range: bool = false
 var is_targeted_hover: bool = false
+
+# CharacterAtlas support (Executiva Deformada 27-animation atlas for non-boss enemies)
+var atlas: CharacterAtlas = null
+var atlas_scale: float = 0.48
+var anim_elapsed: float = 0.0
+var active_anim_name: String = ""
+var death_anim_name: String = "morte_death_baixo"
+var death_fade_timer: float = 0.0
 
 
 func _ready() -> void:
 	hp = max_hp
 	add_to_group("enemies")
 	EventBus.tactical_mode_changed.connect(_on_tactical_changed)
+	if not is_boss:
+		atlas = CharacterAtlas.get_atlas("executiva")
+		if atlas != null:
+			sprite.scale = Vector2(atlas_scale, atlas_scale)
+			sprite.position = Vector2(0.0, 4.0)
+			_play_atlas_action("idle", dir8, 0.0)
 	if is_boss:
 		EventBus.boss_status_changed.emit(true, enemy_name, hp, max_hp, boss_phase)
 
@@ -52,7 +67,63 @@ func _on_tactical_changed(_active: bool, _mode_type: String) -> void:
 	queue_redraw()
 
 
+func _vec_to_dir8(v: Vector2) -> int:
+	var deg: float = rad_to_deg(v.angle())
+	if deg >= -22.5 and deg < 22.5:
+		return 3 # R
+	elif deg >= 22.5 and deg < 67.5:
+		return 5 # DR
+	elif deg >= 67.5 and deg < 112.5:
+		return 0 # D
+	elif deg >= 112.5 and deg < 157.5:
+		return 4 # DL
+	elif deg >= 157.5 or deg < -157.5:
+		return 2 # L
+	elif deg >= -157.5 and deg < -112.5:
+		return 6 # UL
+	elif deg >= -112.5 and deg < -67.5:
+		return 1 # U
+	else:
+		return 7 # UR
+
+
+func _play_atlas_action(action: String, d8: int, elapsed: float, speed_mult: float = 1.0) -> void:
+	if atlas == null:
+		return
+	var res: Dictionary = atlas.resolve_8dir(action, d8)
+	var aname: String = str(res.get("anim", ""))
+	if aname == "":
+		return
+	var fidx: int = atlas.get_frame_index(aname, elapsed, speed_mult)
+	atlas.apply_to_sprite(sprite, aname, fidx, bool(res.get("flip_h", false)))
+	sprite.scale = Vector2(atlas_scale, atlas_scale)
+	sprite.position = Vector2(0.0, 4.0)
+
+
+func _play_atlas_exact(anim_name: String, elapsed: float, flip_h: bool = false, speed_mult: float = 1.0) -> void:
+	if atlas == null or not atlas.has_anim(anim_name):
+		return
+	var fidx: int = atlas.get_frame_index(anim_name, elapsed, speed_mult)
+	atlas.apply_to_sprite(sprite, anim_name, fidx, flip_h)
+	sprite.scale = Vector2(atlas_scale, atlas_scale)
+	sprite.position = Vector2(0.0, 4.0)
+
+
 func _process(delta: float) -> void:
+	if state == AIState.DYING:
+		if not GameState.is_world_paused():
+			anim_elapsed += delta
+			if atlas != null and atlas.has_anim(death_anim_name):
+				_play_atlas_exact(death_anim_name, anim_elapsed, false, 1.35)
+				if atlas.is_one_shot_finished(death_anim_name, anim_elapsed, 1.35):
+					death_fade_timer += delta
+					sprite.modulate = Color(1.0, 1.0, 1.0, clampf(1.0 - death_fade_timer / 0.75, 0.0, 1.0))
+					if death_fade_timer >= 0.75:
+						queue_free()
+			else:
+				queue_free()
+		return
+
 	if not GameState.is_world_paused():
 		if frost_timer > 0.0:
 			frost_timer = maxf(0.0, frost_timer - delta)
@@ -66,8 +137,10 @@ func _process(delta: float) -> void:
 	if hit_flash_timer > 0.0:
 		hit_flash_timer = maxf(0.0, hit_flash_timer - delta)
 		sprite.modulate = Color(2.4, 1.4, 1.4, 1.0)
+	elif state == AIState.SHOCK:
+		sprite.modulate = Color(0.7, 0.95, 1.6, 1.0)
 	elif state == AIState.WINDUP or state == AIState.SHOCKWAVE_WINDUP:
-		sprite.modulate = Color(1.65, 0.45, 0.45, 1.0)
+		sprite.modulate = Color(1.5, 0.65, 0.65, 1.0)
 	elif state == AIState.SPIT_WINDUP:
 		sprite.modulate = Color(0.55, 1.55, 0.55, 1.0)
 	elif frost_timer > 0.0 or GameState.slow_timer > 0.0:
@@ -93,6 +166,9 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if state == AIState.DYING:
+		velocity = Vector2.ZERO
+		return
 	if GameState.is_world_paused():
 		velocity = Vector2.ZERO
 		return
@@ -112,8 +188,12 @@ func _physics_process(delta: float) -> void:
 	match state:
 		AIState.IDLE:
 			velocity = Vector2.ZERO
+			if atlas != null:
+				anim_elapsed += delta
+				_play_atlas_action("idle", dir8, anim_elapsed, 1.0)
 			if dist <= detection_range:
 				state = AIState.CHASE
+				anim_elapsed = 0.0
 
 		AIState.CHASE:
 			if is_boss and boss_phase == 2 and shockwave_cooldown <= 0.0 and dist <= 140.0:
@@ -124,16 +204,20 @@ func _physics_process(delta: float) -> void:
 				queue_redraw()
 			elif dist <= attack_range:
 				state = AIState.WINDUP
-				state_timer = 0.50 if (is_boss and boss_phase == 2) else 0.58
+				state_timer = 0.50 if (is_boss and boss_phase == 2) else 0.65
+				anim_elapsed = 0.0
+				dir8 = _vec_to_dir8(to_player.normalized())
 				velocity = Vector2.ZERO
 				queue_redraw()
 			elif spit_cooldown <= 0.0 and dist > 105.0 and dist <= 290.0:
 				state = AIState.SPIT_WINDUP
 				state_timer = 0.55
+				dir8 = _vec_to_dir8(to_player.normalized())
 				velocity = Vector2.ZERO
 				queue_redraw()
 			elif dist > detection_range * 1.45 and not is_boss:
 				state = AIState.IDLE
+				anim_elapsed = 0.0
 				velocity = Vector2.ZERO
 			else:
 				nav_repath_timer -= delta
@@ -148,21 +232,29 @@ func _physics_process(delta: float) -> void:
 				dir = dir.normalized()
 
 				var spd: float = move_speed * (1.28 if (is_boss and boss_phase == 2) else 1.0)
-				if GameState.slow_timer > 0.0 or frost_timer > 0.0:
-					spd *= 0.52
-				velocity = dir * spd
+				var slow_mult: float = 0.52 if (GameState.slow_timer > 0.0 or frost_timer > 0.0) else 1.0
+				velocity = dir * spd * slow_mult
 				move_and_slide()
-				dir_row = 1 if dir.y < -0.2 else 0
-				sprite.flip_h = dir.x < -0.15
-				anim_timer += delta * 7.5
-				if anim_timer >= 1.0:
-					anim_timer -= 1.0
-					anim_frame = (anim_frame + 1) % 6
-				sprite.frame = dir_row * 6 + anim_frame
+
+				if atlas != null:
+					dir8 = _vec_to_dir8(dir)
+					anim_elapsed += delta
+					_play_atlas_action("walk", dir8, anim_elapsed, 1.35 * slow_mult)
+				else:
+					dir_row = 1 if dir.y < -0.2 else 0
+					sprite.flip_h = dir.x < -0.15
+					anim_timer += delta * 7.5 * slow_mult
+					if anim_timer >= 1.0:
+						anim_timer -= 1.0
+						anim_frame = (anim_frame + 1) % 6
+					sprite.frame = dir_row * 6 + anim_frame
 
 		AIState.WINDUP:
 			velocity = Vector2.ZERO
 			state_timer -= delta
+			if atlas != null:
+				anim_elapsed += delta
+				_play_atlas_action("attack", dir8, anim_elapsed, 2.8)
 			if state_timer <= 0.0:
 				if dist <= attack_range + 24.0 and not player.is_invulnerable():
 					var dmg: int = int(round(float(attack_damage) * (0.65 if arms_broken else 1.0)))
@@ -171,11 +263,15 @@ func _physics_process(delta: float) -> void:
 						GameState.apply_status("stiff", 5.0, player.global_position)
 				state = AIState.COOLDOWN
 				state_timer = 0.95 if (is_boss and boss_phase == 2) else 1.15
+				anim_elapsed = 0.0
 				queue_redraw()
 
 		AIState.SPIT_WINDUP:
 			velocity = Vector2.ZERO
 			state_timer -= delta
+			if atlas != null:
+				anim_elapsed += delta
+				_play_atlas_action("attack", dir8, anim_elapsed, 2.2)
 			if state_timer <= 0.0:
 				var dir: Vector2 = (player.global_position - global_position).normalized()
 				var proj_dmg: int = int(round(float(attack_damage) * 0.65))
@@ -184,6 +280,7 @@ func _physics_process(delta: float) -> void:
 				spit_cooldown = 3.4 if is_boss else 4.8
 				state = AIState.COOLDOWN
 				state_timer = 0.65
+				anim_elapsed = 0.0
 				queue_redraw()
 
 		AIState.SHOCKWAVE_WINDUP:
@@ -201,11 +298,26 @@ func _physics_process(delta: float) -> void:
 				state_timer = 1.0
 				queue_redraw()
 
+		AIState.SHOCK:
+			velocity = Vector2.ZERO
+			state_timer -= delta
+			if atlas != null:
+				anim_elapsed += delta
+				var shock_anim: String = "choque_shock_cima" if (dir8 == 1 or dir8 == 6 or dir8 == 7) else "choque_shock_baixo"
+				_play_atlas_exact(shock_anim, anim_elapsed, false, 2.4)
+			if state_timer <= 0.0:
+				state = AIState.CHASE
+				anim_elapsed = 0.0
+
 		AIState.COOLDOWN:
 			velocity = Vector2.ZERO
 			state_timer -= delta
+			if atlas != null:
+				anim_elapsed += delta
+				_play_atlas_action("idle", dir8, anim_elapsed, 1.0)
 			if state_timer <= 0.0:
 				state = AIState.CHASE
+				anim_elapsed = 0.0
 
 
 func is_chilled() -> bool:
@@ -213,6 +325,8 @@ func is_chilled() -> bool:
 
 
 func apply_weapon_perks(perks: PackedStringArray) -> void:
+	if state == AIState.DYING:
+		return
 	if perks.has("acid"):
 		acid_dot_timer = 6.0
 		EventBus.floating_text_requested.emit("ACID!", global_position + Vector2(0, -68), Color(0.55, 1.0, 0.35))
@@ -222,6 +336,8 @@ func apply_weapon_perks(perks: PackedStringArray) -> void:
 
 
 func take_damage(amount: int, is_crit: bool = false, hit_part: String = "body", is_dot: bool = false) -> void:
+	if state == AIState.DYING:
+		return
 	var final_dmg: int = amount
 	var extra_tag: String = ""
 
@@ -251,10 +367,16 @@ func take_damage(amount: int, is_crit: bool = false, hit_part: String = "body", 
 		boss_phase = 2
 		AudioManager.play_sfx("energy_shot", -1.5, 0.12)
 		EventBus.screen_shake_requested.emit(8.0, 0.35)
-		EventBus.toast_message.emit("FASE 2: MUTANTE ALFA EM SOBRECARGA MITOCONDRIAL!", Color(1.0, 0.32, 0.38))
+		EventBus.toast_message.emit("FASE 2: MUTANTE ALFA EM SOBRECARGA!", Color(1.0, 0.32, 0.38))
 
 	if is_boss:
 		EventBus.boss_status_changed.emit(hp > 0, enemy_name, hp, max_hp, boss_phase)
+
+	# Trigger Executiva Deformada shock/stagger animation on strong/crit hits
+	if hp > 0 and atlas != null and not is_dot and (is_crit or final_dmg >= 42):
+		state = AIState.SHOCK
+		state_timer = 0.42
+		anim_elapsed = 0.0
 
 	queue_redraw()
 
@@ -262,9 +384,23 @@ func take_damage(amount: int, is_crit: bool = false, hit_part: String = "body", 
 		if enemy_key != "":
 			GameState.defeated_enemy_keys[enemy_key] = true
 		GameState.register_bestiary_kill(bestiary_id)
+		remove_from_group("enemies")
+		collision_layer = 0
+		collision_mask = 0
 		EventBus.enemy_defeated.emit(enemy_name, exp_reward, bp_reward, global_position)
 		GameState.award_exp_and_bp(exp_reward, bp_reward, global_position)
-		queue_free()
+		if atlas != null:
+			state = AIState.DYING
+			anim_elapsed = 0.0
+			death_fade_timer = 0.0
+			var facing_up: bool = (dir8 == 1 or dir8 == 6 or dir8 == 7)
+			if is_crit or final_dmg >= 45:
+				death_anim_name = "morte_forte_forte_cima_1" if facing_up else "morte_forte_forte_baixo_1"
+			else:
+				death_anim_name = "morte_death_baixo"
+			queue_redraw()
+		else:
+			queue_free()
 
 
 func _get_player() -> ElisabethPlayer:
@@ -275,6 +411,9 @@ func _get_player() -> ElisabethPlayer:
 
 
 func _draw() -> void:
+	if state == AIState.DYING:
+		return
+
 	draw_set_transform(Vector2(0, 4), 0.0, Vector2(1.0, 0.45))
 	draw_circle(Vector2.ZERO, 17.0, Color(0.0, 0.0, 0.0, 0.45))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -302,7 +441,7 @@ func _draw() -> void:
 	if not is_boss and (hp < max_hp or GameState.is_tactical_paused):
 		var bar_w: float = 44.0
 		var bar_h: float = 5.0
-		var top_left: Vector2 = Vector2(-bar_w * 0.5, -68.0)
+		var top_left: Vector2 = Vector2(-bar_w * 0.5, -72.0)
 		draw_rect(Rect2(top_left, Vector2(bar_w, bar_h)), Color(0.08, 0.08, 0.12, 0.85))
 		var ratio: float = clampf(float(hp) / float(max_hp), 0.0, 1.0)
 		draw_rect(Rect2(top_left, Vector2(bar_w * ratio, bar_h)), Color(0.92, 0.22, 0.28, 0.95))

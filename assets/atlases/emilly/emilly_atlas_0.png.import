@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://tkw0pi4tyld0"
-path="res://.godot/imported/lucia_walk_sheet.png-d71f23c70f03c8a2216f25bb1476e2d9.ctex"
+uid="uid://co3or0ypwelk1"
+path="res://.godot/imported/emilly_atlas_0.png-3cf6efe76117e7dba498b6981bcfc9fe.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/lucia_walk_sheet.png"
-dest_files=["res://.godot/imported/lucia_walk_sheet.png-d71f23c70f03c8a2216f25bb1476e2d9.ctex"]
+source_file="res://assets/atlases/emilly/emilly_atlas_0.png"
+dest_files=["res://.godot/imported/emilly_atlas_0.png-3cf6efe76117e7dba498b6981bcfc9fe.ctex"]
 
 [params]
 

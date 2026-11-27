@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://liynfk6xdve3"
-path="res://.godot/imported/agatha_walk_sheet.png-530b2643faa231e0fc076cf4e30ed04b.ctex"
+uid="uid://bv1d8xjrqr7yd"
+path="res://.godot/imported/agatha_atlas_0.png-fd4a4204d93e8cda3ee0c96384686760.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/agatha_walk_sheet.png"
-dest_files=["res://.godot/imported/agatha_walk_sheet.png-530b2643faa231e0fc076cf4e30ed04b.ctex"]
+source_file="res://assets/atlases/agatha/agatha_atlas_0.png"
+dest_files=["res://.godot/imported/agatha_atlas_0.png-fd4a4204d93e8cda3ee0c96384686760.ctex"]
 
 [params]
 

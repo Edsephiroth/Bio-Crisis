@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cl8qg8o7hcot1"
-path="res://.godot/imported/felix_run_sheet.png-1cb63caff1c2dfa51714772017257fb9.ctex"
+uid="uid://blvbkhnwj8it6"
+path="res://.godot/imported/felix_atlas_1.png-2dd33ebcd9d18ae4fa6319177f266257.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/felix_run_sheet.png"
-dest_files=["res://.godot/imported/felix_run_sheet.png-1cb63caff1c2dfa51714772017257fb9.ctex"]
+source_file="res://assets/atlases/felix/felix_atlas_1.png"
+dest_files=["res://.godot/imported/felix_atlas_1.png-2dd33ebcd9d18ae4fa6319177f266257.ctex"]
 
 [params]
 

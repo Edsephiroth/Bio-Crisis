@@ -9,17 +9,17 @@ extends CharacterBody2D
 @onready var flashlight: PointLight2D = $Flashlight
 @onready var camera: Camera2D = $Camera2D
 
-var walk_tex: Texture2D = null
-var run_tex: Texture2D = null
-var char_scale: float = 0.76
+var atlas: CharacterAtlas = null
+var fallback_walk_tex: Texture2D = null
+var char_scale: float = 0.48
+var fallback_scale: float = 0.76
 
 # 8-direction rows: 0=D, 1=U, 2=L, 3=R, 4=DL, 5=DR, 6=UL, 7=UR
 var facing_dir: Vector2 = Vector2.DOWN
 var dir8: int = 0
-var anim_timer: float = 0.0
-var anim_frame: int = 0
+var anim_elapsed: float = 0.0
+var last_step_half: int = -1
 var idle_timer: float = 0.0
-var active_sheet_mode: String = "walk" # "walk", "run"
 
 var dash_timer: float = 0.0
 var dash_dir: Vector2 = Vector2.DOWN
@@ -43,13 +43,14 @@ func _ready() -> void:
 
 func apply_active_character() -> void:
 	var ch: Dictionary = GameState.get_active_character()
-	walk_tex = load(str(ch["walk"])) as Texture2D
-	run_tex = load(str(ch["run"])) as Texture2D
-	char_scale = float(ch.get("scale", 0.76))
-	sprite.texture = run_tex if active_sheet_mode == "run" else walk_tex
-	sprite.hframes = 8
-	sprite.vframes = 8
-	sprite.scale = Vector2(char_scale, char_scale)
+	var atlas_id: String = str(ch.get("atlas_id", "elisabeth"))
+	atlas = CharacterAtlas.get_atlas(atlas_id)
+	char_scale = float(ch.get("scale", 0.48))
+	fallback_scale = float(ch.get("fallback_scale", 0.76))
+	var fb_path: String = str(ch.get("fallback_walk", ""))
+	fallback_walk_tex = (load(fb_path) as Texture2D) if fb_path != "" else null
+	anim_elapsed = 0.0
+	_render_pose("walk", dir8, 0.0, false)
 
 
 func is_invulnerable() -> bool:
@@ -62,13 +63,11 @@ func apply_recoil(shot_dir: Vector2, push_speed: float, recovery_time: float) ->
 	var back_dir: Vector2 = -shot_dir.normalized()
 	recoil_velocity = back_dir * push_speed
 	recoil_lock_timer = maxf(recoil_lock_timer, recovery_time)
-	# Face the shot direction during recoil
 	facing_dir = shot_dir.normalized()
 	dir8 = _vec_to_dir8(facing_dir)
 
 
 func _vec_to_dir8(v: Vector2) -> int:
-	# Angle in degrees: 0=Right, 90=Down, -90=Up, +-180=Left
 	var deg: float = rad_to_deg(v.angle())
 	if deg >= -22.5 and deg < 22.5:
 		return 3 # R
@@ -86,14 +85,6 @@ func _vec_to_dir8(v: Vector2) -> int:
 		return 1 # U
 	else:
 		return 7 # UR
-
-
-func _dir8_to_dir4(d8: int, v: Vector2) -> int:
-	if d8 <= 3:
-		return d8
-	if absf(v.x) >= absf(v.y):
-		return 3 if v.x >= 0.0 else 2
-	return 0 if v.y >= 0.0 else 1
 
 
 func trigger_dash() -> void:
@@ -142,13 +133,36 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
-func _set_sheet_mode(mode: String) -> void:
-	if active_sheet_mode == mode:
-		return
-	active_sheet_mode = mode
-	sprite.texture = run_tex if mode == "run" else walk_tex
-	sprite.hframes = 8
-	sprite.vframes = 8
+func _render_pose(action: String, d8: int, elapsed: float, is_idle: bool, speed_mult: float = 1.0) -> void:
+	var resolved: Dictionary = atlas.resolve_8dir(action, d8) if atlas != null else {"anim": "", "flip_h": false}
+	var anim_name: String = str(resolved.get("anim", ""))
+	if atlas != null and anim_name != "":
+		var fidx: int = 0 if is_idle else atlas.get_frame_index(anim_name, elapsed, speed_mult)
+		atlas.apply_to_sprite(sprite, anim_name, fidx, bool(resolved.get("flip_h", false)))
+		if is_idle:
+			var wave: float = sin(idle_timer)
+			sprite.scale = Vector2(char_scale * (1.0 - 0.008 * wave), char_scale * (1.0 + 0.018 * wave))
+			sprite.position = Vector2(0.0, 4.0 - 0.6 * wave)
+		else:
+			sprite.scale = Vector2(char_scale, char_scale)
+			sprite.position = Vector2(0.0, 4.0)
+	elif fallback_walk_tex != null:
+		# Seamless fallback for Elisabeth's 3 cardinal walk directions (D/U/L/R)
+		sprite.texture = fallback_walk_tex
+		sprite.hframes = 8
+		sprite.vframes = 8
+		sprite.centered = true
+		sprite.offset = Vector2.ZERO
+		sprite.flip_h = false
+		var fidx_fb: int = 0 if is_idle else (int(elapsed * 9.5 * speed_mult) % 8)
+		sprite.frame = d8 * 8 + fidx_fb
+		if is_idle:
+			var wave2: float = sin(idle_timer)
+			sprite.scale = Vector2(fallback_scale * (1.0 - 0.008 * wave2), fallback_scale * (1.0 + 0.018 * wave2))
+			sprite.position = Vector2(0.0, -34.0 - 0.6 * wave2)
+		else:
+			sprite.scale = Vector2(fallback_scale, fallback_scale)
+			sprite.position = Vector2(0.0, -34.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -169,24 +183,17 @@ func _physics_process(delta: float) -> void:
 		velocity = recoil_velocity
 		move_and_slide()
 		recoil_velocity = recoil_velocity.move_toward(Vector2.ZERO, 920.0 * delta)
-		_set_sheet_mode("walk")
-		sprite.frame = dir8 * 8
+		_render_pose("walk", dir8, 0.0, true)
 		if recoil_lock_timer > 0.0:
 			return
 
-	# Realistic evade/sprint burst: faster 8-dir run animation frames, no supernatural VFX
+	# Realistic evade/sprint burst: accelerated 8-dir run frames, no supernatural VFX
 	if dash_timer > 0.0:
 		dash_timer -= delta
 		velocity = dash_dir * dash_speed
 		move_and_slide()
-		_set_sheet_mode("run")
-		sprite.scale = Vector2(char_scale, char_scale)
-		sprite.position = Vector2(0, -34)
-		anim_timer += delta * 24.0
-		if anim_timer >= 1.0:
-			anim_timer -= 1.0
-			anim_frame = (anim_frame + 1) % 8
-		sprite.frame = dir8 * 8 + anim_frame
+		anim_elapsed += delta
+		_render_pose("run", dir8, anim_elapsed, false, 1.75)
 		flashlight.position = Vector2(0, -18) + dash_dir * 34.0
 		return
 
@@ -200,7 +207,6 @@ func _physics_process(delta: float) -> void:
 	if raw_len > 1.0:
 		input_vec = input_vec.normalized()
 
-	# Hold Shift on PC (or push virtual joystick > 75% on mobile) to run; otherwise walk
 	var is_running: bool = (raw_len > 0.75) if using_joy else Input.is_action_pressed("run")
 
 	var speed_mult: float = 1.35 if GameState.haste_timer > 0.0 else 1.0
@@ -214,28 +220,20 @@ func _physics_process(delta: float) -> void:
 	if raw_len > 0.1:
 		facing_dir = input_vec.normalized()
 		dir8 = _vec_to_dir8(facing_dir)
-		_set_sheet_mode("run" if is_running else "walk")
-		sprite.scale = Vector2(char_scale, char_scale)
-		sprite.position = Vector2(0, -34)
+		var anim_speed: float = (1.25 if GameState.haste_timer > 0.0 else 1.0)
+		anim_elapsed += delta
+		_render_pose("run" if is_running else "walk", dir8, anim_elapsed, false, anim_speed)
 
-		var fps: float = (14.5 if is_running else 9.5) * (1.25 if GameState.haste_timer > 0.0 else 1.0)
-		anim_timer += delta * fps
-		if anim_timer >= 1.0:
-			anim_timer -= 1.0
-			anim_frame = (anim_frame + 1) % 8
-			if anim_frame == 2 or anim_frame == 6:
-				AudioManager.play_sfx("step", -11.0, 0.14)
-
-		sprite.frame = dir8 * 8 + anim_frame
+		# Subtle synced footstep cadence (~2.6 steps/sec walk, ~3.8 steps/sec run)
+		var step_rate: float = (3.8 if is_running else 2.6) * anim_speed
+		var step_tick: int = int(anim_elapsed * step_rate)
+		if step_tick != last_step_half:
+			last_step_half = step_tick
+			AudioManager.play_sfx("step", -11.0, 0.14)
 	else:
 		idle_timer += delta * 3.2
-		_set_sheet_mode("walk")
-		sprite.frame = dir8 * 8
-		var wave: float = sin(idle_timer)
-		var breath_y: float = 1.0 + 0.018 * wave
-		var breath_x: float = 1.0 - 0.008 * wave
-		sprite.scale = Vector2(char_scale * breath_x, char_scale * breath_y)
-		sprite.position = Vector2(0, -34.0 - 0.6 * wave)
+		last_step_half = -1
+		_render_pose("walk", dir8, 0.0, true)
 
 	flashlight.position = Vector2(0, -18) + facing_dir * 34.0
 

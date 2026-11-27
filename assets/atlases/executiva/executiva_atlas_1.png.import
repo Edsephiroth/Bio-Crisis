@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://db7a0hog2tiap"
-path="res://.godot/imported/elisabeth_run_sheet.png-a820bf4cf2bb117cbcb813dd0e3ad0b6.ctex"
+uid="uid://bmiosf2b2jy3h"
+path="res://.godot/imported/executiva_atlas_1.png-98ce050ea579638c168eb38b192d99fc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/elisabeth_run_sheet.png"
-dest_files=["res://.godot/imported/elisabeth_run_sheet.png-a820bf4cf2bb117cbcb813dd0e3ad0b6.ctex"]
+source_file="res://assets/atlases/executiva/executiva_atlas_1.png"
+dest_files=["res://.godot/imported/executiva_atlas_1.png-98ce050ea579638c168eb38b192d99fc.ctex"]
 
 [params]
 
